@@ -3,53 +3,90 @@ import { Animated, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSQLiteContext } from 'expo-sqlite';
 import type { Note } from '../types';
-import { getRandomUnreadNote, getUnreadCount } from '../db/notes';
+import { getUnreadCount } from '../db/notes';
+import { getAvailableNotes, getReleaseState, type ReleaseState } from '../services/release';
+import { scheduleDailyNotifications } from '../services/notifications';
+import { getTodayEvent } from '../data/specialEvents';
+import { useTheme } from '../theme/ThemeContext';
 import Jar from '../components/Jar';
 import NoteModal from '../components/NoteModal';
+import ReleaseCountdown from '../components/ReleaseCountdown';
+
+function pickRandom<T>(items: T[]): T | null {
+  if (items.length === 0) {
+    return null;
+  }
+  return items[Math.floor(Math.random() * items.length)];
+}
 
 export default function HomeScreen() {
   const db = useSQLiteContext();
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [releaseState, setReleaseState] = useState<ReleaseState | null>(null);
   const [drawing, setDrawing] = useState(false);
   const [note, setNote] = useState<Note | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
-  const [emptyMessage, setEmptyMessage] = useState(false);
-  const emptyOpacity = useRef(new Animated.Value(0)).current;
+  const [hintMessage, setHintMessage] = useState<string | null>(null);
+  const hintOpacity = useRef(new Animated.Value(0)).current;
+  const todayEvent = getTodayEvent();
 
-  const refreshCount = useCallback(async () => {
+  const refresh = useCallback(async () => {
     setUnreadCount(await getUnreadCount(db));
+    setReleaseState(await getReleaseState(db));
   }, [db]);
 
   useFocusEffect(
     useCallback(() => {
-      refreshCount();
-    }, [refreshCount])
+      refresh();
+    }, [refresh])
   );
+
+  useEffect(() => {
+    if (hintMessage) {
+      hintOpacity.setValue(0);
+      Animated.timing(hintOpacity, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+    }
+  }, [hintMessage, hintOpacity]);
+
+  const showHint = (message: string) => {
+    hintOpacity.stopAnimation();
+    setHintMessage(message);
+    hintOpacity.setValue(0);
+    Animated.timing(hintOpacity, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+  };
 
   const handleDraw = async () => {
     if (drawing) {
       return;
     }
     setDrawing(true);
-    emptyOpacity.stopAnimation();
+    setHintMessage(null);
     try {
-      const randomNote = await getRandomUnreadNote(db);
+      const available = await getAvailableNotes(db);
+      const randomNote = pickRandom(available);
       if (randomNote) {
-        setEmptyMessage(false);
         setNote(randomNote);
         setModalVisible(true);
+      } else if (releaseState && releaseState.pendingCount > 0) {
+        showHint('La siguiente nota se libera hoy a la 1:00 PM. ¡Vuelve luego! 💕');
       } else {
-        setEmptyMessage(true);
-        Animated.timing(emptyOpacity, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+        showHint('El tarro está vacío por ahora… ¡pero pronto llegará más!');
       }
     } finally {
       setDrawing(false);
     }
   };
 
-  const handleSaved = useCallback(() => {
-    refreshCount();
-  }, [refreshCount]);
+  const handleSaved = useCallback(async () => {
+    await refresh();
+    await scheduleDailyNotifications(db);
+  }, [db, refresh]);
+
+  const availableCount = releaseState?.availableCount ?? 0;
+  const pendingCount = releaseState?.pendingCount ?? 0;
+  const hasAvailable = availableCount > 0;
 
   return (
     <View style={styles.container}>
@@ -58,21 +95,47 @@ export default function HomeScreen() {
         <Text style={styles.subtitle}>Toca el tarro para sacar una sorpresa</Text>
       </View>
 
+      {todayEvent && (
+        <View style={styles.eventBanner}>
+          <Text style={styles.eventBannerText}>{todayEvent.homeBannerMessage}</Text>
+        </View>
+      )}
+
       <View style={styles.jarArea}>
-        <Jar onPress={handleDraw} disabled={drawing} />
+        <Jar onPress={handleDraw} disabled={drawing || !hasAvailable} />
       </View>
 
       <View style={styles.footer}>
-        <View style={styles.counterPill}>
-          <Text style={styles.counterText}>
-            {unreadCount === 1
-              ? '1 nota espera dentro'
-              : `${unreadCount} notas esperan dentro`}
-          </Text>
-        </View>
-        <Animated.Text style={[styles.emptyMessage, { opacity: emptyOpacity }]}>
-          El tarro está vacío por ahora… ¡pero pronto llegará más!
-        </Animated.Text>
+        {releaseState === null ? null : hasAvailable ? (
+          <View style={styles.counterPill}>
+            <Text style={styles.counterText}>
+              {availableCount === 1
+                ? '1 nota lista para abrir'
+                : `${availableCount} notas listas para abrir`}
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.counterPill}>
+            <Text style={styles.counterText}>
+              {pendingCount === 0
+                ? 'El tarro espera nuevas notas'
+                : `${pendingCount} ${pendingCount === 1 ? 'nota espera' : 'notas esperan'} dentro`}
+            </Text>
+          </View>
+        )}
+
+        {releaseState && !hasAvailable && releaseState.nextReleaseAt && (
+          <View style={styles.countdownBox}>
+            <ReleaseCountdown target={releaseState.nextReleaseAt} />
+            <Text style={styles.countdownHint}>Las notas se liberan una por día a la 1:00 PM</Text>
+          </View>
+        )}
+
+        {hintMessage && (
+          <Animated.Text style={[styles.hintMessage, { opacity: hintOpacity }]}>
+            {hintMessage}
+          </Animated.Text>
+        )}
       </View>
 
       <NoteModal
@@ -85,51 +148,80 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFF8F0',
-    alignItems: 'center',
-    paddingTop: 84,
-  },
-  header: {
-    alignItems: 'center',
-  },
-  appName: {
-    fontSize: 30,
-    fontWeight: '800',
-    color: '#5C4033',
-  },
-  subtitle: {
-    marginTop: 6,
-    fontSize: 15,
-    color: '#B08D7C',
-  },
-  jarArea: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  footer: {
-    paddingBottom: 64,
-    alignItems: 'center',
-  },
-  counterPill: {
-    borderRadius: 20,
-    backgroundColor: '#FBEBDC',
-    paddingHorizontal: 18,
-    paddingVertical: 9,
-  },
-  counterText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#8A5A48',
-  },
-  emptyMessage: {
-    marginTop: 14,
-    fontSize: 14,
-    color: '#B08D7C',
-    textAlign: 'center',
-    paddingHorizontal: 40,
-  },
-});
+const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+      alignItems: 'center',
+      paddingTop: 84,
+    },
+    header: {
+      alignItems: 'center',
+    },
+    appName: {
+      fontSize: 30,
+      fontWeight: '800',
+      color: colors.textPrimary,
+    },
+    subtitle: {
+      marginTop: 6,
+      fontSize: 15,
+      color: colors.textSecondary,
+    },
+    eventBanner: {
+      marginTop: 18,
+      borderRadius: 18,
+      backgroundColor: colors.accent,
+      paddingHorizontal: 22,
+      paddingVertical: 12,
+      marginHorizontal: 30,
+      shadowColor: colors.accent,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 4,
+    },
+    eventBannerText: {
+      color: '#FFFFFF',
+      fontSize: 16,
+      fontWeight: '800',
+      textAlign: 'center',
+    },
+    jarArea: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    footer: {
+      paddingBottom: 64,
+      alignItems: 'center',
+    },
+    counterPill: {
+      borderRadius: 20,
+      backgroundColor: colors.pillBg,
+      paddingHorizontal: 18,
+      paddingVertical: 9,
+    },
+    counterText: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: colors.textSecondary,
+    },
+    countdownBox: {
+      marginTop: 16,
+      alignItems: 'center',
+    },
+    countdownHint: {
+      marginTop: 6,
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
+    hintMessage: {
+      marginTop: 14,
+      fontSize: 14,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      paddingHorizontal: 40,
+    },
+  });

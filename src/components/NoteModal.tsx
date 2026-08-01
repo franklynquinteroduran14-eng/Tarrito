@@ -6,7 +6,6 @@ import {
   Linking,
   Modal,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -18,6 +17,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import type { MediaAttachment, Note } from '../types';
 import { getNoteFeedback, getNoteMedia, saveFeedbackAndMarkRead } from '../db/notes';
 import { formatDate } from '../utils/date';
+import { useTheme } from '../theme/ThemeContext';
 import StarRating from './StarRating';
 
 interface NoteModalProps {
@@ -29,6 +29,8 @@ interface NoteModalProps {
 }
 
 function MediaItem({ item }: { item: MediaAttachment }) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   if (item.type === 'image') {
     return <Image source={{ uri: item.url }} style={styles.mediaImage} resizeMode="cover" />;
   }
@@ -48,6 +50,8 @@ function MediaItem({ item }: { item: MediaAttachment }) {
 
 export default function NoteModal({ visible, note, onClose, onSaved, readOnly = false }: NoteModalProps) {
   const db = useSQLiteContext();
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const [media, setMedia] = useState<MediaAttachment[]>([]);
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
@@ -189,7 +193,7 @@ export default function NoteModal({ visible, note, onClose, onSaved, readOnly = 
                         <TextInput
                           style={styles.commentInput}
                           placeholder="Escribe aquí lo que sentiste al leerla…"
-                          placeholderTextColor="#B8A79A"
+                          placeholderTextColor={colors.textSecondary}
                           multiline
                           value={comment}
                           onChangeText={setComment}
@@ -218,188 +222,189 @@ export default function NoteModal({ visible, note, onClose, onSaved, readOnly = 
   );
 }
 
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-  },
-  backdrop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(43, 26, 20, 0.55)',
-  },
-  overlay: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 22,
-    paddingVertical: 40,
-  },
-  card: {
-    maxHeight: '88%',
-    backgroundColor: '#FFFDFB',
-    borderRadius: 26,
-    paddingHorizontal: 24,
-    paddingTop: 26,
-    paddingBottom: 18,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 12,
-  },
-  scrollContent: {
-    paddingBottom: 8,
-  },
-  closeButton: {
-    position: 'absolute',
-    top: 14,
-    right: 14,
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: '#F6ECE3',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1,
-  },
-  closeText: {
-    color: '#8A6A58',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#5C4033',
-    marginRight: 40,
-  },
-  date: {
-    marginTop: 6,
-    fontSize: 13,
-    color: '#B08D7C',
-    textTransform: 'capitalize',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#F0E4DA',
-    marginVertical: 16,
-  },
-  message: {
-    fontSize: 16,
-    lineHeight: 25,
-    color: '#4A342A',
-  },
-  mediaSection: {
-    marginTop: 22,
-  },
-  sectionLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#B08D7C',
-    marginBottom: 10,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  mediaImage: {
-    width: '100%',
-    height: 200,
-    borderRadius: 16,
-    backgroundColor: '#F6ECE3',
-  },
-  mediaLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    columnGap: 10,
-    backgroundColor: '#FBEFE6',
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-  },
-  mediaLinkIcon: {
-    color: '#D96A87',
-    fontSize: 15,
-  },
-  mediaLinkText: {
-    color: '#8A5A48',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  feedbackSection: {
-    marginTop: 26,
-    borderTopWidth: 1,
-    borderTopColor: '#F0E4DA',
-    paddingTop: 20,
-  },
-  feedbackTitle: {
-    textAlign: 'center',
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#5C4033',
-    marginBottom: 14,
-  },
-  commentInput: {
-    marginTop: 18,
-    minHeight: 88,
-    maxHeight: 140,
-    borderRadius: 16,
-    backgroundColor: '#FAF3EC',
-    borderWidth: 1,
-                    borderColor: '#EBDDCF',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: '#4A342A',
-    textAlignVertical: 'top',
-  },
-  errorText: {
-    marginTop: 10,
-    textAlign: 'center',
-    color: '#C0392B',
-    fontSize: 13,
-  },
-  readOnlyComment: {
-    marginTop: 16,
-    borderRadius: 16,
-    backgroundColor: '#FBEBDC',
-    borderLeftWidth: 4,
-    borderLeftColor: '#D96A87',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  readOnlyCommentText: {
-    fontSize: 15,
-    lineHeight: 23,
-    color: '#5C4033',
-    fontStyle: 'italic',
-  },
-  noComment: {
-    marginTop: 16,
-    textAlign: 'center',
-    fontSize: 14,
-    color: '#B08D7C',
-  },
-  saveButton: {
-    marginTop: 18,
-    borderRadius: 18,
-    backgroundColor: '#D96A87',
-    paddingVertical: 15,
-    alignItems: 'center',
-    shadowColor: '#D96A87',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  saveButtonDisabled: {
-    backgroundColor: '#E5B9C4',
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  saveButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-});
+const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
+  StyleSheet.create({
+    root: {
+      flex: 1,
+    },
+    backdrop: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: colors.backdrop,
+    },
+    overlay: {
+      flex: 1,
+      justifyContent: 'center',
+      paddingHorizontal: 22,
+      paddingVertical: 40,
+    },
+    card: {
+      maxHeight: '88%',
+      backgroundColor: colors.surface,
+      borderRadius: 26,
+      paddingHorizontal: 24,
+      paddingTop: 26,
+      paddingBottom: 18,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 12 },
+      shadowOpacity: 0.25,
+      shadowRadius: 20,
+      elevation: 12,
+    },
+    scrollContent: {
+      paddingBottom: 8,
+    },
+    closeButton: {
+      position: 'absolute',
+      top: 14,
+      right: 14,
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      backgroundColor: colors.accentSoft,
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1,
+    },
+    closeText: {
+      color: colors.textSecondary,
+      fontSize: 15,
+      fontWeight: '700',
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: '800',
+      color: colors.textPrimary,
+      marginRight: 40,
+    },
+    date: {
+      marginTop: 6,
+      fontSize: 13,
+      color: colors.textSecondary,
+      textTransform: 'capitalize',
+    },
+    divider: {
+      height: 1,
+      backgroundColor: colors.border,
+      marginVertical: 16,
+    },
+    message: {
+      fontSize: 16,
+      lineHeight: 25,
+      color: colors.textBody,
+    },
+    mediaSection: {
+      marginTop: 22,
+    },
+    sectionLabel: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: colors.textSecondary,
+      marginBottom: 10,
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
+    },
+    mediaImage: {
+      width: '100%',
+      height: 200,
+      borderRadius: 16,
+      backgroundColor: colors.accentSoft,
+    },
+    mediaLink: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      columnGap: 10,
+      backgroundColor: colors.accentSoft,
+      borderRadius: 14,
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+    },
+    mediaLinkIcon: {
+      color: colors.accent,
+      fontSize: 15,
+    },
+    mediaLinkText: {
+      color: colors.textSecondary,
+      fontSize: 15,
+      fontWeight: '600',
+    },
+    feedbackSection: {
+      marginTop: 26,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      paddingTop: 20,
+    },
+    feedbackTitle: {
+      textAlign: 'center',
+      fontSize: 17,
+      fontWeight: '800',
+      color: colors.textPrimary,
+      marginBottom: 14,
+    },
+    commentInput: {
+      marginTop: 18,
+      minHeight: 88,
+      maxHeight: 140,
+      borderRadius: 16,
+      backgroundColor: colors.inputBg,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      fontSize: 15,
+      color: colors.textBody,
+      textAlignVertical: 'top',
+    },
+    errorText: {
+      marginTop: 10,
+      textAlign: 'center',
+      color: colors.error,
+      fontSize: 13,
+    },
+    readOnlyComment: {
+      marginTop: 16,
+      borderRadius: 16,
+      backgroundColor: colors.accentSoft,
+      borderLeftWidth: 4,
+      borderLeftColor: colors.accent,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+    },
+    readOnlyCommentText: {
+      fontSize: 15,
+      lineHeight: 23,
+      color: colors.textPrimary,
+      fontStyle: 'italic',
+    },
+    noComment: {
+      marginTop: 16,
+      textAlign: 'center',
+      fontSize: 14,
+      color: colors.textSecondary,
+    },
+    saveButton: {
+      marginTop: 18,
+      borderRadius: 18,
+      backgroundColor: colors.accent,
+      paddingVertical: 15,
+      alignItems: 'center',
+      shadowColor: colors.accent,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 5,
+    },
+    saveButtonDisabled: {
+      opacity: 0.5,
+      shadowOpacity: 0,
+      elevation: 0,
+    },
+    saveButtonText: {
+      color: '#FFFFFF',
+      fontSize: 16,
+      fontWeight: '700',
+    },
+  });

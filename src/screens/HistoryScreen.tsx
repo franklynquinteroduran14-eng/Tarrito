@@ -1,12 +1,14 @@
 import { useCallback, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSQLiteContext } from 'expo-sqlite';
 import type { HistoryNote, Note } from '../types';
 import { getReadHistory } from '../db/notes';
 import { formatDateTime } from '../utils/date';
+import { useTheme } from '../theme/ThemeContext';
 import StarRating from '../components/StarRating';
 import NoteModal from '../components/NoteModal';
+import SettingsModal from '../components/SettingsModal';
 
 function mediaBadge(note: HistoryNote): { icon: string; label: string } | null {
   if (note.media_count === 0 || !note.media_types) {
@@ -21,9 +23,12 @@ function mediaBadge(note: HistoryNote): { icon: string; label: string } | null {
 
 export default function HistoryScreen() {
   const db = useSQLiteContext();
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const [history, setHistory] = useState<HistoryNote[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<HistoryNote | null>(null);
+  const [settingsVisible, setSettingsVisible] = useState(false);
 
   const loadHistory = useCallback(async () => {
     setHistory(await getReadHistory(db));
@@ -75,12 +80,22 @@ export default function HistoryScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Recuerdos</Text>
-        <Text style={styles.subtitle}>
-          {history.length > 0
-            ? `${history.length} ${history.length === 1 ? 'nota guardada' : 'notas guardadas'} en el tarro`
-            : 'Tus notas leídas, guardadas para siempre'}
-        </Text>
+        <View style={styles.headerText}>
+          <Text style={styles.title}>Recuerdos</Text>
+          <Text style={styles.subtitle}>
+            {history.length > 0
+              ? `${history.length} ${history.length === 1 ? 'nota guardada' : 'notas guardadas'} en el tarro`
+              : 'Tus notas leídas, guardadas para siempre'}
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={styles.settingsButton}
+          onPress={() => setSettingsVisible(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Abrir ajustes"
+        >
+          <Text style={styles.settingsIcon}>⚙️</Text>
+        </TouchableOpacity>
       </View>
 
       {loading ? (
@@ -111,113 +126,132 @@ export default function HistoryScreen() {
         onClose={() => setSelected(null)}
         readOnly
       />
+
+      <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFF8F0',
-  },
-  header: {
-    paddingTop: 76,
-    paddingHorizontal: 24,
-    paddingBottom: 18,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#5C4033',
-  },
-  subtitle: {
-    marginTop: 6,
-    fontSize: 14,
-    color: '#B08D7C',
-  },
-  listContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 110,
-  },
-  card: {
-    backgroundColor: '#FFFDFB',
-    borderRadius: 20,
-    padding: 18,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: '#F0E4DA',
-    shadowColor: '#B5876B',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  cardPressed: {
-    transform: [{ scale: 0.98 }],
-    opacity: 0.9,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    columnGap: 10,
-  },
-  cardHeaderText: {
-    flex: 1,
-  },
-  cardTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#5C4033',
-  },
-  cardReadAt: {
-    marginTop: 5,
-    fontSize: 12,
-    color: '#B08D7C',
-  },
-  mediaBadge: {
-    borderRadius: 12,
-    backgroundColor: '#FBEFE6',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  mediaBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#8A5A48',
-  },
-  cardStars: {
-    marginTop: 12,
-    alignSelf: 'flex-start',
-  },
-  cardComment: {
-    marginTop: 10,
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#6B4F3F',
-    fontStyle: 'italic',
-  },
-  center: {
-    flex: 1,
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingTop: 90,
-    paddingHorizontal: 36,
-  },
-  emptyIcon: {
-    fontSize: 56,
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    fontSize: 19,
-    fontWeight: '800',
-    color: '#5C4033',
-  },
-  emptyText: {
-    marginTop: 10,
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#B08D7C',
-    textAlign: 'center',
-  },
-});
+const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    header: {
+      paddingTop: 76,
+      paddingHorizontal: 24,
+      paddingBottom: 18,
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    headerText: {
+      flex: 1,
+    },
+    title: {
+      fontSize: 28,
+      fontWeight: '800',
+      color: colors.textPrimary,
+    },
+    subtitle: {
+      marginTop: 6,
+      fontSize: 14,
+      color: colors.textSecondary,
+    },
+    settingsButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.pillBg,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    settingsIcon: {
+      fontSize: 20,
+    },
+    listContent: {
+      paddingHorizontal: 20,
+      paddingBottom: 110,
+    },
+    card: {
+      backgroundColor: colors.card,
+      borderRadius: 20,
+      padding: 18,
+      marginBottom: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.12,
+      shadowRadius: 8,
+      elevation: 3,
+    },
+    cardPressed: {
+      transform: [{ scale: 0.98 }],
+      opacity: 0.9,
+    },
+    cardHeader: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      columnGap: 10,
+    },
+    cardHeaderText: {
+      flex: 1,
+    },
+    cardTitle: {
+      fontSize: 17,
+      fontWeight: '800',
+      color: colors.textPrimary,
+    },
+    cardReadAt: {
+      marginTop: 5,
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
+    mediaBadge: {
+      borderRadius: 12,
+      backgroundColor: colors.accentSoft,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+    },
+    mediaBadgeText: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    cardStars: {
+      marginTop: 12,
+      alignSelf: 'flex-start',
+    },
+    cardComment: {
+      marginTop: 10,
+      fontSize: 14,
+      lineHeight: 20,
+      color: colors.textBody,
+      fontStyle: 'italic',
+    },
+    center: {
+      flex: 1,
+    },
+    emptyState: {
+      alignItems: 'center',
+      paddingTop: 90,
+      paddingHorizontal: 36,
+    },
+    emptyIcon: {
+      fontSize: 56,
+      marginBottom: 16,
+    },
+    emptyTitle: {
+      fontSize: 19,
+      fontWeight: '800',
+      color: colors.textPrimary,
+    },
+    emptyText: {
+      marginTop: 10,
+      fontSize: 15,
+      lineHeight: 22,
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+  });

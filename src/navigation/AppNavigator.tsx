@@ -1,13 +1,11 @@
 import { Text } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useTheme } from '../theme/ThemeContext';
 import HomeScreen from '../screens/HomeScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 
 const Tab = createBottomTabNavigator();
-
-const ACTIVE_COLOR = '#D96A87';
-const INACTIVE_COLOR = '#B08D7C';
 
 function TabIcon({ icon, color }: { icon: string; color: string }) {
   return (
@@ -18,16 +16,17 @@ function TabIcon({ icon, color }: { icon: string; color: string }) {
 }
 
 export default function AppNavigator() {
+  const { colors } = useTheme();
   return (
     <NavigationContainer>
       <Tab.Navigator
         screenOptions={{
           headerShown: false,
-          tabBarActiveTintColor: ACTIVE_COLOR,
-          tabBarInactiveTintColor: INACTIVE_COLOR,
+          tabBarActiveTintColor: colors.accent,
+          tabBarInactiveTintColor: colors.textSecondary,
           tabBarStyle: {
-            backgroundColor: '#FFFDFB',
-            borderTopColor: '#F0E4DA',
+            backgroundColor: colors.tabBar,
+            borderTopColor: colors.border,
             height: 68,
             paddingTop: 8,
             paddingBottom: 10,

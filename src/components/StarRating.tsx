@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useTheme } from '../theme/ThemeContext';
 
 interface StarRatingProps {
   value: number;
@@ -7,6 +8,8 @@ interface StarRatingProps {
 }
 
 export default function StarRating({ value, onChange, size = 34 }: StarRatingProps) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   return (
     <View style={styles.row}>
       {[1, 2, 3, 4, 5].map((star) => {
@@ -42,22 +45,23 @@ export default function StarRating({ value, onChange, size = 34 }: StarRatingPro
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    columnGap: 8,
-  },
-  star: {
-    color: '#D9CDBF',
-  },
-  starFilled: {
-    color: '#F2B33D',
-    textShadowColor: 'rgba(242, 179, 61, 0.4)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-  },
-  starEmpty: {
-    color: '#D9CDBF',
-  },
-});
+const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
+  StyleSheet.create({
+    row: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      columnGap: 8,
+    },
+    star: {
+      color: colors.starEmpty,
+    },
+    starFilled: {
+      color: colors.starFilled,
+      textShadowColor: 'rgba(242, 179, 61, 0.4)',
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 3,
+    },
+    starEmpty: {
+      color: colors.starEmpty,
+    },
+  });

@@ -8,14 +8,11 @@ export async function getUnreadCount(db: SQLiteDatabase): Promise<number> {
   return row?.count ?? 0;
 }
 
-export async function getRandomUnreadNote(db: SQLiteDatabase): Promise<Note | null> {
-  const row = await db.getFirstAsync<Omit<Note, 'is_read'> & { is_read: number }>(
-    'SELECT id, title, message, created_at, is_read FROM notes WHERE is_read = 0 ORDER BY RANDOM() LIMIT 1'
+export async function getPendingNotes(db: SQLiteDatabase): Promise<Note[]> {
+  const rows = await db.getAllAsync<Omit<Note, 'is_read'> & { is_read: number }>(
+    'SELECT id, title, message, created_at, is_read FROM notes WHERE is_read = 0 ORDER BY created_at ASC'
   );
-  if (!row) {
-    return null;
-  }
-  return { ...row, is_read: row.is_read === 1 };
+  return rows.map((row) => ({ ...row, is_read: row.is_read === 1 }));
 }
 
 export async function getNoteMedia(
