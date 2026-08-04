@@ -10,7 +10,7 @@ export async function getUnreadCount(db: SQLiteDatabase): Promise<number> {
 
 export async function getPendingNotes(db: SQLiteDatabase): Promise<Note[]> {
   const rows = await db.getAllAsync<Omit<Note, 'is_read'> & { is_read: number }>(
-    'SELECT id, title, message, created_at, is_read FROM notes WHERE is_read = 0 ORDER BY created_at ASC'
+    'SELECT id, title, message, created_at, created_at_date AS createdAtDate, is_read FROM notes WHERE is_read = 0 ORDER BY created_at ASC'
   );
   return rows.map((row) => ({ ...row, is_read: row.is_read === 1 }));
 }
@@ -38,7 +38,7 @@ export async function getNoteFeedback(
 
 export async function getReadHistory(db: SQLiteDatabase): Promise<HistoryNote[]> {
   const rows = await db.getAllAsync<Omit<HistoryNote, 'is_read'> & { is_read: number }>(
-    `SELECT n.id, n.title, n.message, n.created_at, n.is_read,
+    `SELECT n.id, n.title, n.message, n.created_at, n.created_at_date AS createdAtDate, n.is_read,
             f.rating, f.comment, f.read_at,
             (SELECT COUNT(*) FROM media_attachments m WHERE m.note_id = n.id) AS media_count,
             (SELECT GROUP_CONCAT(m.type) FROM media_attachments m WHERE m.note_id = n.id) AS media_types

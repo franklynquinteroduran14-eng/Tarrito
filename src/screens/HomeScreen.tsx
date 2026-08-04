@@ -7,6 +7,7 @@ import { getUnreadCount } from '../db/notes';
 import { getAvailableNotes, getReleaseState, type ReleaseState } from '../services/release';
 import { scheduleDailyNotifications } from '../services/notifications';
 import { getTodayEvent } from '../data/specialEvents';
+import { playPop } from '../services/sound';
 import { useTheme } from '../theme/ThemeContext';
 import Jar from '../components/Jar';
 import NoteModal from '../components/NoteModal';
@@ -63,6 +64,7 @@ export default function HomeScreen() {
     }
     setDrawing(true);
     setHintMessage(null);
+    playPop();
     try {
       const available = await getAvailableNotes(db);
       const randomNote = pickRandom(available);

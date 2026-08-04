@@ -17,6 +17,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import type { MediaAttachment, Note } from '../types';
 import { getNoteFeedback, getNoteMedia, saveFeedbackAndMarkRead } from '../db/notes';
 import { formatDate } from '../utils/date';
+import { playChime } from '../services/sound';
 import { useTheme } from '../theme/ThemeContext';
 import StarRating from './StarRating';
 
@@ -68,6 +69,7 @@ export default function NoteModal({ visible, note, onClose, onSaved, readOnly = 
     if (!visible) {
       return;
     }
+    playChime();
     backdropOpacity.setValue(0);
     cardScale.setValue(0.85);
     cardTranslateY.setValue(40);
@@ -170,6 +172,10 @@ export default function NoteModal({ visible, note, onClose, onSaved, readOnly = 
                       ))}
                     </View>
                   )}
+
+                  <Text style={styles.writtenBy}>
+                    Escrito por Franklyn el {note.createdAtDate ?? formatDate(note.created_at)}
+                  </Text>
 
                   <View style={styles.feedbackSection}>
                     {readOnly ? (
@@ -330,6 +336,14 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       color: colors.textSecondary,
       fontSize: 15,
       fontWeight: '600',
+    },
+    writtenBy: {
+      marginTop: 22,
+      fontSize: 12,
+      fontStyle: 'italic',
+      color: colors.textSecondary,
+      opacity: 0.75,
+      textAlign: 'right',
     },
     feedbackSection: {
       marginTop: 26,

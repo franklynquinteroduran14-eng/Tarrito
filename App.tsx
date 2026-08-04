@@ -10,6 +10,7 @@ import {
   scheduleDailyNotifications,
   scheduleTodaySpecialEvent,
 } from './src/services/notifications';
+import { loadSoundEffects } from './src/services/sound';
 import AppNavigator from './src/navigation/AppNavigator';
 
 function ThemedStatusBar() {
@@ -29,6 +30,7 @@ function NotificationManager() {
     (async () => {
       configureNotificationHandler();
       await ensureNotificationChannel();
+      await loadSoundEffects();
       const granted = await requestNotificationPermissions();
       if (granted) {
         await scheduleDailyNotifications(db);

@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react';
-import { Animated, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, Modal, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { APP_NAME, APP_VERSION } from '../constants/version';
+import { isSoundEffectsEnabled, setSoundEffectsEnabled } from '../services/sound';
 import { useTheme, type ThemeMode } from '../theme/ThemeContext';
 
 interface SettingsModalProps {
@@ -11,6 +12,8 @@ interface SettingsModalProps {
 export default function SettingsModal({ visible, onClose }: SettingsModalProps) {
   const { colors, mode, setMode, isDark } = useTheme();
   const styles = createStyles(colors);
+  const [soundEffects, setSoundEffects] = useState(true);
+  const [soundEffectsReady, setSoundEffectsReady] = useState(false);
 
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const cardScale = useRef(new Animated.Value(0.9)).current;
@@ -21,6 +24,10 @@ export default function SettingsModal({ visible, onClose }: SettingsModalProps) 
     if (!visible) {
       return;
     }
+    isSoundEffectsEnabled().then((enabled) => {
+      setSoundEffects(enabled);
+      setSoundEffectsReady(true);
+    });
     backdropOpacity.setValue(0);
     cardScale.setValue(0.9);
     cardTranslateY.setValue(30);
@@ -49,6 +56,11 @@ export default function SettingsModal({ visible, onClose }: SettingsModalProps) 
         </Text>
       </Pressable>
     );
+  };
+
+  const handleToggleSoundEffects = (enabled: boolean) => {
+    setSoundEffects(enabled);
+    setSoundEffectsEnabled(enabled);
   };
 
   return (
@@ -84,6 +96,29 @@ export default function SettingsModal({ visible, onClose }: SettingsModalProps) 
                   ? 'Tema oscuro activado, ideal para noches tranquilas.'
                   : 'Tema claro activado, ideal para leer tus notas.'}
               </Text>
+            </View>
+
+            <View style={styles.divider} />
+
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>Sonidos</Text>
+              <View style={styles.soundRow}>
+                <View style={styles.soundRowText}>
+                  <Text style={styles.soundLabel}>Efectos de sonido</Text>
+                  <Text style={styles.sectionHint}>
+                    {soundEffects && soundEffectsReady
+                      ? 'Sonidos suaves al sacar y leer notas.'
+                      : 'Los sonidos del tarro están apagados.'}
+                  </Text>
+                </View>
+                <Switch
+                  value={soundEffects}
+                  onValueChange={handleToggleSoundEffects}
+                  trackColor={{ false: colors.border, true: colors.accent }}
+                  thumbColor={soundEffects ? '#FFFFFF' : colors.textSecondary}
+                  accessibilityLabel="Activar o desactivar efectos de sonido"
+                />
+              </View>
             </View>
 
             <View style={styles.divider} />
@@ -197,6 +232,19 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       marginTop: 10,
       fontSize: 12,
       color: colors.textSecondary,
+    },
+    soundRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      columnGap: 14,
+    },
+    soundRowText: {
+      flex: 1,
+    },
+    soundLabel: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.textPrimary,
     },
     divider: {
       height: 1,

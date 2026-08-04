@@ -5,6 +5,7 @@ export interface Note {
   title: string;
   message: string;
   created_at: string;
+  createdAtDate?: string;
   is_read: boolean;
 }
 
@@ -37,6 +38,7 @@ export interface SeedNote {
   title: string;
   message: string;
   created_at: string;
+  createdAtDate?: string;
   is_read: boolean;
   feedback?: {
     id: string;

@@ -1,18 +1,19 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import mockNotesData from '../data/mockNotes.json';
 
-const DATABASE_VERSION = 1;
+const DATABASE_VERSION = 2;
 
 const SCHEMA_SQL = `
 PRAGMA journal_mode = WAL;
 PRAGMA foreign_keys = ON;
 
 CREATE TABLE IF NOT EXISTS notes (
-  id          TEXT PRIMARY KEY NOT NULL,
-  title       TEXT NOT NULL,
-  message     TEXT NOT NULL,
-  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
-  is_read     INTEGER NOT NULL DEFAULT 0 CHECK (is_read IN (0, 1))
+  id               TEXT PRIMARY KEY NOT NULL,
+  title            TEXT NOT NULL,
+  message          TEXT NOT NULL,
+  created_at       TEXT NOT NULL DEFAULT (datetime('now')),
+  created_at_date  TEXT,
+  is_read          INTEGER NOT NULL DEFAULT 0 CHECK (is_read IN (0, 1))
 );
 
 CREATE TABLE IF NOT EXISTS user_feedback (
@@ -48,6 +49,17 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
     await seedDatabase(db);
   }
 
+  const columns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(notes)');
+  const hasCreatedAtDate = columns.some((column) => column.name === 'created_at_date');
+  if (!hasCreatedAtDate) {
+    await db.execAsync(
+      `ALTER TABLE notes ADD COLUMN created_at_date TEXT;
+       UPDATE notes
+         SET created_at_date = strftime('%d-%m-%Y', created_at)
+         WHERE created_at_date IS NULL;`
+    );
+  }
+
   await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
 }
 
@@ -61,11 +73,12 @@ export async function seedDatabase(db: SQLiteDatabase) {
   await db.withExclusiveTransactionAsync(async (txn) => {
     for (const note of mockNotesData.notes) {
       await txn.runAsync(
-        'INSERT INTO notes (id, title, message, created_at, is_read) VALUES (?, ?, ?, ?, ?)',
+        'INSERT INTO notes (id, title, message, created_at, created_at_date, is_read) VALUES (?, ?, ?, ?, ?, ?)',
         note.id,
         note.title,
         note.message,
         note.created_at,
+        note.createdAtDate ?? null,
         note.is_read ? 1 : 0
       );
 
