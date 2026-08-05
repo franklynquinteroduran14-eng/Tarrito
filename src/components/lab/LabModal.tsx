@@ -143,7 +143,7 @@ const createShellStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       paddingVertical: 30,
     },
     card: {
-      maxHeight: '94%',
+      maxHeight: '88%',
       backgroundColor: colors.surface,
       borderRadius: 24,
       paddingHorizontal: 18,
@@ -188,8 +188,8 @@ const createShellStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       flexGrow: 0,
     },
     tabBarContent: {
-      columnGap: 10,
-      paddingHorizontal: 2,
+      gap: 8,
+      paddingHorizontal: 16,
     },
     tabChip: {
       flexDirection: 'row',
@@ -223,6 +223,7 @@ const createShellStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       flexShrink: 1,
     },
     tabScrollContent: {
-      paddingBottom: 10,
+      paddingBottom: 56,
+      paddingHorizontal: 2,
     },
   });

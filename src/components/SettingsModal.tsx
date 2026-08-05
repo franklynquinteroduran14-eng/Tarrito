@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Modal, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { Animated, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { APP_NAME, APP_VERSION } from '../constants/version';
 import { getSoundSettings, setSoundEffectsEnabled } from '../services/sound';
 import { useTheme } from '../theme/ThemeContext';
-import { THEMES, THEME_IDS, type ThemeMode } from '../theme/colors';
+import { THEMES, type ThemeMode } from '../theme/colors';
 import PressableScale from './PressableScale';
 import LabModal from './lab/LabModal';
 
@@ -13,6 +13,8 @@ interface SettingsModalProps {
 }
 
 const SECRET_TAPS_NEEDED = 10;
+
+const QUICK_THEMES: ThemeMode[] = ['organico', 'noche', 'romantico', 'otono'];
 
 export default function SettingsModal({ visible, onClose }: SettingsModalProps) {
   const { colors, mode, setMode, isDark } = useTheme();
@@ -105,50 +107,56 @@ export default function SettingsModal({ visible, onClose }: SettingsModalProps) 
               <Text style={styles.title}>Ajustes</Text>
             </Pressable>
 
-            <View style={styles.section}>
-              <Text style={styles.sectionLabel}>Apariencia</Text>
-              <View style={styles.modeRow}>
-                {THEME_IDS.map((id) =>
-                  renderModeOption(id, THEMES[id].label, THEMES[id].icon)
-                )}
-              </View>
-              <Text style={styles.sectionHint}>
-                {isDark
-                  ? 'Tema Noche Profunda activado, ideal para noches tranquilas.'
-                  : `Tema ${THEMES[mode].label} activado. Cambia los colores en el Laboratorio.`}
-              </Text>
-            </View>
-
-            <View style={styles.divider} />
-
-            <View style={styles.section}>
-              <Text style={styles.sectionLabel}>Sonidos</Text>
-              <View style={styles.soundRow}>
-                <View style={styles.soundRowText}>
-                  <Text style={styles.soundLabel}>Efectos de sonido</Text>
-                  <Text style={styles.sectionHint}>
-                    {soundEffects && soundEffectsReady
-                      ? 'Sonidos suaves al sacar y leer notas.'
-                      : 'Los sonidos del tarro están apagados.'}
-                  </Text>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
+            >
+              <View style={styles.section}>
+                <Text style={styles.sectionLabel}>Apariencia</Text>
+                <View style={styles.modeRow}>
+                  {QUICK_THEMES.map((id) =>
+                    renderModeOption(id, THEMES[id].label, THEMES[id].icon)
+                  )}
                 </View>
-                <Switch
-                  value={soundEffects}
-                  onValueChange={handleToggleSoundEffects}
-                  trackColor={{ false: colors.border, true: colors.accent }}
-                  thumbColor={soundEffects ? '#FFFFFF' : colors.textSecondary}
-                  accessibilityLabel="Activar o desactivar efectos de sonido"
-                />
+                <Text style={styles.sectionHint}>
+                  {isDark
+                    ? 'Tema Noche Profunda activado, ideal para noches tranquilas.'
+                    : `Tema ${THEMES[mode].label} activado. Los 14 temas viven en el Laboratorio 🧪`}
+                </Text>
               </View>
-            </View>
 
-            <View style={styles.divider} />
+              <View style={styles.divider} />
 
-            <Text style={styles.sectionLabel}>Información</Text>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>{APP_NAME}</Text>
-              <Text style={styles.infoValue}>v{APP_VERSION}</Text>
-            </View>
+              <View style={styles.section}>
+                <Text style={styles.sectionLabel}>Sonidos</Text>
+                <View style={styles.soundRow}>
+                  <View style={styles.soundRowText}>
+                    <Text style={styles.soundLabel}>Efectos de sonido</Text>
+                    <Text style={styles.sectionHint}>
+                      {soundEffects && soundEffectsReady
+                        ? 'Sonidos suaves al sacar y leer notas.'
+                        : 'Los sonidos del tarro están apagados.'}
+                    </Text>
+                  </View>
+                  <Switch
+                    value={soundEffects}
+                    onValueChange={handleToggleSoundEffects}
+                    trackColor={{ false: colors.border, true: colors.accent }}
+                    thumbColor={soundEffects ? '#FFFFFF' : colors.textSecondary}
+                    accessibilityLabel="Activar o desactivar efectos de sonido"
+                  />
+                </View>
+              </View>
+
+              <View style={styles.divider} />
+
+              <Text style={styles.sectionLabel}>Información</Text>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>{APP_NAME}</Text>
+                <Text style={styles.infoValue}>v{APP_VERSION}</Text>
+              </View>
+            </ScrollView>
           </Animated.View>
         </View>
       </View>
@@ -176,16 +184,20 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       paddingHorizontal: 26,
     },
     card: {
+      maxHeight: '88%',
       backgroundColor: colors.surface,
       borderRadius: 24,
       paddingHorizontal: 22,
       paddingTop: 24,
-      paddingBottom: 20,
+      paddingBottom: 8,
       shadowColor: colors.shadow,
       shadowOffset: { width: 0, height: 10 },
       shadowOpacity: 0.25,
       shadowRadius: 18,
       elevation: 10,
+    },
+    scrollContent: {
+      paddingBottom: 16,
     },
     closeButton: {
       position: 'absolute',

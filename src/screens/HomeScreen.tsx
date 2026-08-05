@@ -34,6 +34,24 @@ export default function HomeScreen() {
   const [hintMessage, setHintMessage] = useState<string | null>(null);
   const hintOpacity = useRef(new Animated.Value(0)).current;
   const [todayEvent, setTodayEvent] = useState<SpecialEvent | null>(null);
+  const bannerPulse = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!todayEvent) {
+      bannerPulse.stopAnimation();
+      bannerPulse.setValue(0);
+      return;
+    }
+    bannerPulse.setValue(0);
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(bannerPulse, { toValue: 1, duration: 1800, useNativeDriver: true }),
+        Animated.timing(bannerPulse, { toValue: 0, duration: 1800, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [todayEvent, bannerPulse]);
 
   const refresh = useCallback(async () => {
     setUnreadCount(await getUnreadCount(db));
@@ -112,9 +130,29 @@ export default function HomeScreen() {
       </View>
 
       {todayEvent && (
-        <View style={styles.eventBanner}>
+        <Animated.View
+          style={[
+            styles.eventBanner,
+            {
+              transform: [
+                {
+                  scale: bannerPulse.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [1, 1.035],
+                  }),
+                },
+                {
+                  translateY: bannerPulse.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, -4],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
           <Text style={styles.eventBannerText}>{todayEvent.homeBannerMessage}</Text>
-        </View>
+        </Animated.View>
       )}
 
       <View style={styles.jarArea}>
