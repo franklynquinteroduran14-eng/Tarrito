@@ -7,6 +7,20 @@ export interface Note {
   created_at: string;
   createdAtDate?: string;
   is_read: boolean;
+  timesOpened: number;
+}
+
+export interface AdminNote extends Note {
+  rating: number | null;
+  comment: string | null;
+  read_at: string | null;
+}
+
+export interface NotesMetrics {
+  total: number;
+  readCount: number;
+  unreadCount: number;
+  totalOpens: number;
 }
 
 export interface UserFeedback {

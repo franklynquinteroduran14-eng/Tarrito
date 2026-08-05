@@ -15,9 +15,8 @@ import {
 } from 'react-native';
 import { useSQLiteContext } from 'expo-sqlite';
 import type { MediaAttachment, Note } from '../types';
-import { getNoteFeedback, getNoteMedia, saveFeedbackAndMarkRead } from '../db/notes';
+import { getNoteFeedback, getNoteMedia, incrementTimesOpened, saveFeedbackAndMarkRead } from '../db/notes';
 import { formatDate } from '../utils/date';
-import { playChime } from '../services/sound';
 import { useTheme } from '../theme/ThemeContext';
 import StarRating from './StarRating';
 
@@ -27,6 +26,7 @@ interface NoteModalProps {
   onClose: () => void;
   onSaved?: () => void;
   readOnly?: boolean;
+  dismissable?: boolean;
 }
 
 function MediaItem({ item }: { item: MediaAttachment }) {
@@ -49,7 +49,14 @@ function MediaItem({ item }: { item: MediaAttachment }) {
   );
 }
 
-export default function NoteModal({ visible, note, onClose, onSaved, readOnly = false }: NoteModalProps) {
+export default function NoteModal({
+  visible,
+  note,
+  onClose,
+  onSaved,
+  readOnly = false,
+  dismissable = true,
+}: NoteModalProps) {
   const db = useSQLiteContext();
   const { colors } = useTheme();
   const styles = createStyles(colors);
@@ -69,7 +76,6 @@ export default function NoteModal({ visible, note, onClose, onSaved, readOnly = 
     if (!visible) {
       return;
     }
-    playChime();
     backdropOpacity.setValue(0);
     cardScale.setValue(0.85);
     cardTranslateY.setValue(40);
@@ -104,6 +110,7 @@ export default function NoteModal({ visible, note, onClose, onSaved, readOnly = 
         setReadAt(feedback.read_at);
       }
     });
+    incrementTimesOpened(db, note.id);
   }, [db, note]);
 
   const handleSave = async () => {
@@ -127,7 +134,12 @@ export default function NoteModal({ visible, note, onClose, onSaved, readOnly = 
   };
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="none"
+      onRequestClose={dismissable ? onClose : () => {}}
+    >
       <View style={styles.root}>
         <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]} />
         <KeyboardAvoidingView
@@ -148,18 +160,22 @@ export default function NoteModal({ visible, note, onClose, onSaved, readOnly = 
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={onClose}
-                accessibilityRole="button"
-                accessibilityLabel="Cerrar"
-              >
-                <Text style={styles.closeText}>✕</Text>
-              </TouchableOpacity>
+              {dismissable && (
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={onClose}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cerrar"
+                >
+                  <Text style={styles.closeText}>✕</Text>
+                </TouchableOpacity>
+              )}
 
               {note ? (
                 <>
-                  <Text style={styles.title}>{note.title}</Text>
+                  <Text style={[styles.title, !dismissable && styles.titleNoClose]}>
+                    {note.title}
+                  </Text>
                   <Text style={styles.date}>{formatDate(note.created_at)}</Text>
                   <View style={styles.divider} />
                   <Text style={styles.message}>{note.message}</Text>
@@ -285,6 +301,9 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       fontWeight: '800',
       color: colors.textPrimary,
       marginRight: 40,
+    },
+    titleNoClose: {
+      marginRight: 0,
     },
     date: {
       marginTop: 6,

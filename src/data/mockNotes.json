@@ -83,6 +83,246 @@
       "created_at": "2026-07-25 23:59:00",
       "createdAtDate": "25-07-2026",
       "is_read": false
+    },
+    {
+      "id": "note-007",
+      "title": "El sonido del corazón",
+      "message": "Dicen que el corazón no suena, pero el mío hace un ruido raro cada vez que me escribes. Se llama 'apuro por verte'.",
+      "created_at": "2026-07-26 12:00:00",
+      "createdAtDate": "26-07-2026",
+      "is_read": false
+    },
+    {
+      "id": "note-008",
+      "title": "Café para dos",
+      "message": "El café sabe mejor en taza ajena, pero sabe a gloria cuando lo tomamos mirándonos. Te invito la próxima vez.",
+      "created_at": "2026-07-27 08:30:00",
+      "createdAtDate": "27-07-2026",
+      "is_read": false
+    },
+    {
+      "id": "note-009",
+      "title": "Piedra, papel o beso",
+      "message": "Ganaste piedra, papel o… perdón, siempre gano yo en 'piedra, papel o beso'. No hagas trampa otra vez.",
+      "created_at": "2026-07-28 19:10:00",
+      "createdAtDate": "28-07-2026",
+      "is_read": false
+    },
+    {
+      "id": "note-010",
+      "title": "Mensaje recibido",
+      "message": "Este mensaje se abrió solito porque ya estaba cansado de esperar. Tú y yo también: se abrieron solitos, hace mucho.",
+      "created_at": "2026-07-29 21:45:00",
+      "createdAtDate": "29-07-2026",
+      "is_read": false
+    },
+    {
+      "id": "note-011",
+      "title": "La lluvia y tú",
+      "message": "Hoy llueve y solo pienso en ti. Que un día de lluvia se vuelva un día de película: palomitas, cobija y tú.",
+      "created_at": "2026-07-30 15:20:00",
+      "createdAtDate": "30-07-2026",
+      "is_read": false
+    },
+    {
+      "id": "note-012",
+      "title": "Cuenta regresiva",
+      "message": "Cada día que pasa es uno menos para tu próxima sonrisa cerca. La espero con ansias, siempre.",
+      "created_at": "2026-07-31 11:05:00",
+      "createdAtDate": "31-07-2026",
+      "is_read": false
+    },
+    {
+      "id": "note-013",
+      "title": "Cambio de estación",
+      "message": "Cambian las hojas, cambia el clima, cambia todo. Menos esto: seguir eligiéndote, cada vez que me toca.",
+      "created_at": "2026-08-01 09:00:00",
+      "createdAtDate": "01-08-2026",
+      "is_read": false
+    },
+    {
+      "id": "note-014",
+      "title": "Post-it mental",
+      "message": "Si fueras un post-it, estaría pegado en el monitor: 'No olvidar: quererla, abrazarla, buscar su nota favorita'.",
+      "created_at": "2026-08-02 17:35:00",
+      "createdAtDate": "02-08-2026",
+      "is_read": false
+    },
+    {
+      "id": "note-015",
+      "title": "El plan B",
+      "message": "Mi plan A era esperarte, el plan B también, y el plan C también. Los planes contigo no fallan.",
+      "created_at": "2026-08-03 13:40:00",
+      "createdAtDate": "03-08-2026",
+      "is_read": false
+    },
+    {
+      "id": "note-016",
+      "title": "Buenas noches",
+      "message": "Que tus sueños sean tan bonitos como la forma en que dices mi nombre. Te quiero, descansa.",
+      "created_at": "2026-08-04 22:55:00",
+      "createdAtDate": "04-08-2026",
+      "is_read": false
+    },
+    {
+      "id": "note-017",
+      "title": "Cinco minutos más",
+      "message": "Cinco minutos más contigo y no me quejo de nada. Cinco minutos más y el día se vuelve bueno.",
+      "created_at": "2026-08-05 10:00:00",
+      "createdAtDate": "05-08-2026",
+      "is_read": false
+    },
+    {
+      "id": "note-018",
+      "title": "El GPS de mi corazón",
+      "message": "Mi corazón no necesita GPS: siempre encuentra el camino hacia ti.",
+      "created_at": "2026-08-06 14:25:00",
+      "createdAtDate": "06-08-2026",
+      "is_read": false
+    },
+    {
+      "id": "note-019",
+      "title": "Lista de pendientes",
+      "message": "Pendiente: llamarte. Pendiente: extrañarte un poco menos. Pendiente: verte pronto. Ese último nunca se cumple del todo.",
+      "created_at": "2026-08-07 09:15:00",
+      "createdAtDate": "07-08-2026",
+      "is_read": false
+    },
+    {
+      "id": "note-020",
+      "title": "Playlist para ti",
+      "message": "Si nuestra historia fuera una canción, sería de esas que no te cansas de escuchar en repeat.",
+      "created_at": "2026-08-08 18:40:00",
+      "createdAtDate": "08-08-2026",
+      "is_read": false
+    },
+    {
+      "id": "note-021",
+      "title": "El viento hoy",
+      "message": "El viento de hoy me trajo tu risa de memoria. Qué raro que huela tan bien.",
+      "created_at": "2026-08-09 12:30:00",
+      "createdAtDate": "09-08-2026",
+      "is_read": false
+    },
+    {
+      "id": "note-022",
+      "title": "Día de lluvia",
+      "message": "Otra vez llueve y otra vez pienso en ti. La lluvia y yo tenemos un acuerdo: tú.",
+      "created_at": "2026-08-10 16:05:00",
+      "createdAtDate": "10-08-2026",
+      "is_read": false
+    },
+    {
+      "id": "note-023",
+      "title": "Receta del buen día",
+      "message": "Un día bueno se hace con: café, una notita tuya y cero prisa. Hoy tengo dos de tres.",
+      "created_at": "2026-08-11 08:50:00",
+      "createdAtDate": "11-08-2026",
+      "is_read": false
+    },
+    {
+      "id": "note-024",
+      "title": "Secreto de oficina",
+      "message": "Te cuento un secreto: cuando digo que voy a la cocina, en realidad voy a revisar si me escribiste.",
+      "created_at": "2026-08-12 15:45:00",
+      "createdAtDate": "12-08-2026",
+      "is_read": false
+    },
+    {
+      "id": "note-025",
+      "title": "La hora dorada",
+      "message": "La hora dorada es más dorada cuando la compartimos. El sol ni sabe lo que se pierde.",
+      "created_at": "2026-08-13 19:20:00",
+      "createdAtDate": "13-08-2026",
+      "is_read": false
+    },
+    {
+      "id": "note-026",
+      "title": "Compás",
+      "message": "Si la vida es música, tú eres mi compás. A tu lado el ritmo nunca se pierde.",
+      "created_at": "2026-08-14 11:10:00",
+      "createdAtDate": "14-08-2026",
+      "is_read": false
+    },
+    {
+      "id": "note-027",
+      "title": "Nota al margen",
+      "message": "Nota al margen de mi cuaderno: ella. Nota al margen de mi cuaderno: siempre ella.",
+      "created_at": "2026-08-15 17:35:00",
+      "createdAtDate": "15-08-2026",
+      "is_read": false
+    },
+    {
+      "id": "note-028",
+      "title": "El sofá",
+      "message": "Un día de estos el sofá va a quejarse: siempre terminamos pegados en el mismo hueco.",
+      "created_at": "2026-08-16 20:15:00",
+      "createdAtDate": "16-08-2026",
+      "is_read": false
+    },
+    {
+      "id": "note-029",
+      "title": "Carta sin enviar",
+      "message": "Esta carta no necesita sobre ni estampilla: solo necesitaba encontrarte.",
+      "created_at": "2026-08-17 13:00:00",
+      "createdAtDate": "17-08-2026",
+      "is_read": false
+    },
+    {
+      "id": "note-030",
+      "title": "Frío",
+      "message": "Si hace frío, abrígate con la idea de que alguien te quiere mucho. Funciona mejor que una bufanda.",
+      "created_at": "2026-08-18 07:40:00",
+      "createdAtDate": "18-08-2026",
+      "is_read": false
+    },
+    {
+      "id": "note-031",
+      "title": "Pequeñas victorias",
+      "message": "Mi victoria de hoy: encontré la notita que me dejaste y volví a sonreír. Gracias.",
+      "created_at": "2026-08-19 16:55:00",
+      "createdAtDate": "19-08-2026",
+      "is_read": false
+    },
+    {
+      "id": "note-032",
+      "title": "Marte",
+      "message": "Si algún día voy a Marte, me llevo una foto tuya para que el espacio no se sienta vacío.",
+      "created_at": "2026-08-20 10:30:00",
+      "createdAtDate": "20-08-2026",
+      "is_read": false
+    },
+    {
+      "id": "note-033",
+      "title": "Domingo",
+      "message": "Los domingos saben a manta, a peli y a ti. Los demás días saben a esperarte.",
+      "created_at": "2026-08-21 21:05:00",
+      "createdAtDate": "21-08-2026",
+      "is_read": false
+    },
+    {
+      "id": "note-034",
+      "title": "La contraseña",
+      "message": "Mi contraseña es tu nombre. No es muy segura, pero siempre la recuerdo.",
+      "created_at": "2026-08-22 12:45:00",
+      "createdAtDate": "22-08-2026",
+      "is_read": false
+    },
+    {
+      "id": "note-035",
+      "title": "Ruido",
+      "message": "El mundo hace mucho ruido, pero tu voz lo baja todo a volumen cero.",
+      "created_at": "2026-08-23 09:25:00",
+      "createdAtDate": "23-08-2026",
+      "is_read": false
+    },
+    {
+      "id": "note-036",
+      "title": "Última nota",
+      "message": "Esta es la última nota por ahora, pero no el último te quiero. Eso nunca se acaba.",
+      "created_at": "2026-08-24 18:00:00",
+      "createdAtDate": "24-08-2026",
+      "is_read": false
     }
   ]
 }

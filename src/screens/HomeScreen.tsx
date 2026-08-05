@@ -4,10 +4,12 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useSQLiteContext } from 'expo-sqlite';
 import type { Note } from '../types';
 import { getUnreadCount } from '../db/notes';
+import { getNoteById } from '../db/notes';
 import { getAvailableNotes, getReleaseState, type ReleaseState } from '../services/release';
+import { clearForcedNoteId, getForcedNoteId } from '../services/release';
 import { scheduleDailyNotifications } from '../services/notifications';
-import { getTodayEvent } from '../data/specialEvents';
-import { playPop } from '../services/sound';
+import { getSimulatedEvent, type SpecialEvent } from '../data/specialEvents';
+import { playDraw } from '../services/sound';
 import { useTheme } from '../theme/ThemeContext';
 import Jar from '../components/Jar';
 import NoteModal from '../components/NoteModal';
@@ -31,7 +33,7 @@ export default function HomeScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [hintMessage, setHintMessage] = useState<string | null>(null);
   const hintOpacity = useRef(new Animated.Value(0)).current;
-  const todayEvent = getTodayEvent();
+  const [todayEvent, setTodayEvent] = useState<SpecialEvent | null>(null);
 
   const refresh = useCallback(async () => {
     setUnreadCount(await getUnreadCount(db));
@@ -41,6 +43,7 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       refresh();
+      getSimulatedEvent().then(setTodayEvent);
     }, [refresh])
   );
 
@@ -64,11 +67,22 @@ export default function HomeScreen() {
     }
     setDrawing(true);
     setHintMessage(null);
-    playPop();
     try {
+      const forcedId = await getForcedNoteId();
+      if (forcedId) {
+        const forcedNote = await getNoteById(db, forcedId);
+        if (forcedNote) {
+          await clearForcedNoteId();
+          playDraw();
+          setNote(forcedNote);
+          setModalVisible(true);
+          return;
+        }
+      }
       const available = await getAvailableNotes(db);
       const randomNote = pickRandom(available);
       if (randomNote) {
+        playDraw();
         setNote(randomNote);
         setModalVisible(true);
       } else if (releaseState && releaseState.pendingCount > 0) {
@@ -145,6 +159,7 @@ export default function HomeScreen() {
         note={note}
         onClose={() => setModalVisible(false)}
         onSaved={handleSaved}
+        dismissable={false}
       />
     </View>
   );

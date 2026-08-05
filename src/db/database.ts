@@ -1,7 +1,8 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import mockNotesData from '../data/mockNotes.json';
+import { addReleaseBypassIds } from '../services/release';
 
-const DATABASE_VERSION = 2;
+const DATABASE_VERSION = 4;
 
 const SCHEMA_SQL = `
 PRAGMA journal_mode = WAL;
@@ -13,6 +14,7 @@ CREATE TABLE IF NOT EXISTS notes (
   message          TEXT NOT NULL,
   created_at       TEXT NOT NULL DEFAULT (datetime('now')),
   created_at_date  TEXT,
+  times_opened     INTEGER NOT NULL DEFAULT 0,
   is_read          INTEGER NOT NULL DEFAULT 0 CHECK (is_read IN (0, 1))
 );
 
@@ -46,7 +48,6 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
 
   if (currentDbVersion === 0) {
     await db.execAsync(SCHEMA_SQL);
-    await seedDatabase(db);
   }
 
   const columns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(notes)');
@@ -60,20 +61,27 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
     );
   }
 
+  const hasTimesOpened = columns.some((column) => column.name === 'times_opened');
+  if (!hasTimesOpened) {
+    await db.execAsync('ALTER TABLE notes ADD COLUMN times_opened INTEGER NOT NULL DEFAULT 0');
+  }
+
+  if (currentDbVersion < 3) {
+    await seedDatabase(db);
+    const pendingRows = await db.getAllAsync<{ id: string }>(
+      'SELECT id FROM notes WHERE is_read = 0'
+    );
+    await addReleaseBypassIds(pendingRows.map((row) => row.id));
+  }
+
   await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
 }
 
 export async function seedDatabase(db: SQLiteDatabase) {
-  const row = await db.getFirstAsync<{ count: number }>('SELECT COUNT(*) AS count FROM notes');
-  const count = row?.count ?? 0;
-  if (count > 0) {
-    return;
-  }
-
   await db.withExclusiveTransactionAsync(async (txn) => {
     for (const note of mockNotesData.notes) {
       await txn.runAsync(
-        'INSERT INTO notes (id, title, message, created_at, created_at_date, is_read) VALUES (?, ?, ?, ?, ?, ?)',
+        'INSERT OR IGNORE INTO notes (id, title, message, created_at, created_at_date, is_read) VALUES (?, ?, ?, ?, ?, ?)',
         note.id,
         note.title,
         note.message,
@@ -84,7 +92,7 @@ export async function seedDatabase(db: SQLiteDatabase) {
 
       if (note.feedback) {
         await txn.runAsync(
-          'INSERT INTO user_feedback (id, note_id, rating, comment, read_at) VALUES (?, ?, ?, ?, ?)',
+          'INSERT OR IGNORE INTO user_feedback (id, note_id, rating, comment, read_at) VALUES (?, ?, ?, ?, ?)',
           note.feedback.id,
           note.id,
           note.feedback.rating,
@@ -95,7 +103,7 @@ export async function seedDatabase(db: SQLiteDatabase) {
 
       for (const media of note.media ?? []) {
         await txn.runAsync(
-          'INSERT INTO media_attachments (id, note_id, type, url, position) VALUES (?, ?, ?, ?, ?)',
+          'INSERT OR IGNORE INTO media_attachments (id, note_id, type, url, position) VALUES (?, ?, ?, ?, ?)',
           media.id,
           note.id,
           media.type,

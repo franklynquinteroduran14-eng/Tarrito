@@ -4,12 +4,41 @@ import type { Note } from '../types';
 import { getPendingNotes } from '../db/notes';
 
 const RELEASE_START_KEY = 'release_start_day';
+const RELEASE_BYPASS_KEY = 'release_bypass_ids';
+const FORCED_NOTE_KEY = 'forced_note_id';
 const RELEASE_HOUR = 13;
 
 export interface ReleaseState {
   pendingCount: number;
   availableCount: number;
   nextReleaseAt: Date | null;
+}
+
+const EMPTY_BYPASS: ReadonlySet<string> = new Set();
+
+export async function getReleaseBypassIds(): Promise<Set<string>> {
+  const stored = await Storage.getItem(RELEASE_BYPASS_KEY);
+  return new Set(stored ? stored.split(',').filter(Boolean) : []);
+}
+
+export async function addReleaseBypassIds(ids: string[]): Promise<void> {
+  const current = await getReleaseBypassIds();
+  for (const id of ids) {
+    current.add(id);
+  }
+  await Storage.setItem(RELEASE_BYPASS_KEY, [...current].join(','));
+}
+
+export async function getForcedNoteId(): Promise<string | null> {
+  return Storage.getItem(FORCED_NOTE_KEY);
+}
+
+export async function setForcedNoteId(id: string): Promise<void> {
+  await Storage.setItem(FORCED_NOTE_KEY, id);
+}
+
+export async function clearForcedNoteId(): Promise<void> {
+  await Storage.removeItem(FORCED_NOTE_KEY);
 }
 
 export function dayKey(date: Date): string {
@@ -23,7 +52,16 @@ export function releaseTimeFor(dayOffset: number, startDay: string): Date {
   return new Date(year, month - 1, day + dayOffset, RELEASE_HOUR, 0, 0, 0);
 }
 
-export function isReleased(note: Note, pending: Note[], startDay: string, now: Date): boolean {
+export function isReleased(
+  note: Note,
+  pending: Note[],
+  startDay: string,
+  now: Date,
+  bypassed: ReadonlySet<string> = EMPTY_BYPASS
+): boolean {
+  if (bypassed.has(note.id)) {
+    return true;
+  }
   const index = pending.findIndex((candidate) => candidate.id === note.id);
   if (index === -1) {
     return true;
@@ -41,16 +79,21 @@ export async function getReleaseState(db: SQLiteDatabase): Promise<ReleaseState>
   }
 
   const pending = await getPendingNotes(db);
+  const bypassed = await getReleaseBypassIds();
   let availableCount = 0;
   let nextReleaseAt: Date | null = null;
 
   for (let index = 0; index < pending.length; index++) {
+    const note = pending[index];
+    if (bypassed.has(note.id)) {
+      availableCount++;
+      continue;
+    }
     const releaseAt = releaseTimeFor(index, startDay);
     if (releaseAt.getTime() <= now.getTime()) {
       availableCount++;
-    } else {
+    } else if (nextReleaseAt === null) {
       nextReleaseAt = releaseAt;
-      break;
     }
   }
 
@@ -66,5 +109,6 @@ export async function getAvailableNotes(db: SQLiteDatabase): Promise<Note[]> {
   }
 
   const pending = await getPendingNotes(db);
-  return pending.filter((note) => isReleased(note, pending, startDay, now));
+  const bypassed = await getReleaseBypassIds();
+  return pending.filter((note) => isReleased(note, pending, startDay, now, bypassed));
 }

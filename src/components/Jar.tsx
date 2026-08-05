@@ -1,5 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Pressable, StyleSheet, View } from 'react-native';
+import { Accelerometer } from 'expo-sensors';
+import { useIsFocused } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
 
 interface JarProps {
@@ -9,11 +11,37 @@ interface JarProps {
 
 const NOTE_COLORS = ['#E8A0B4', '#F2C879', '#9FC5A8'];
 
+const NOTE_STYLE = [
+  { rotate: -14, right: 118, bottom: 26 },
+  { rotate: 8, right: 52, bottom: 14 },
+  { rotate: -4, right: 88, bottom: 58 },
+];
+
+const NOTE_MOTION = [
+  { ampX: 12, ampY: 7, rot: 7 },
+  { ampX: 8, ampY: 5, rot: 5 },
+  { ampX: 16, ampY: 9, rot: 9 },
+];
+
+const SENSOR_INTERVAL_MS = 32;
+const TILT_SCALE = 2;
+const MAX_TILT = 1;
+const SMOOTHING = 0.16;
+const BASELINE_SAMPLES = 8;
+
+function clamp(value: number): number {
+  return Math.max(-MAX_TILT, Math.min(MAX_TILT, value));
+}
+
 export default function Jar({ onPress, disabled }: JarProps) {
   const { colors } = useTheme();
   const styles = createStyles(colors);
+  const isFocused = useIsFocused();
   const bob = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(1)).current;
+  const tiltX = useRef(new Animated.Value(0)).current;
+  const tiltY = useRef(new Animated.Value(0)).current;
+  const [motionEnabled, setMotionEnabled] = useState(true);
 
   useEffect(() => {
     const loop = Animated.loop(
@@ -26,6 +54,85 @@ export default function Jar({ onPress, disabled }: JarProps) {
     return () => loop.stop();
   }, [bob]);
 
+  useEffect(() => {
+    if (!isFocused) {
+      tiltX.setValue(0);
+      tiltY.setValue(0);
+      return;
+    }
+
+    let active = true;
+    let subscription: { remove: () => void } | null = null;
+    let baselineX = 0;
+    let baselineY = 0;
+    let baselineCount = 0;
+    let smoothX = 0;
+    let smoothY = 0;
+
+    (async () => {
+      let available = false;
+      try {
+        available = await Accelerometer.isAvailableAsync();
+      } catch {
+        available = false;
+      }
+      if (!available || !active) {
+        setMotionEnabled(false);
+        return;
+      }
+      try {
+        Accelerometer.setUpdateInterval(SENSOR_INTERVAL_MS);
+        subscription = Accelerometer.addListener(({ x, y }) => {
+          if (baselineCount < BASELINE_SAMPLES) {
+            baselineX += x;
+            baselineY += y;
+            baselineCount += 1;
+            if (baselineCount === BASELINE_SAMPLES) {
+              baselineX /= BASELINE_SAMPLES;
+              baselineY /= BASELINE_SAMPLES;
+            }
+            return;
+          }
+          const rawX = clamp(-(x - baselineX) * TILT_SCALE);
+          const rawY = clamp(-(y - baselineY) * TILT_SCALE);
+          smoothX += (rawX - smoothX) * SMOOTHING;
+          smoothY += (rawY - smoothY) * SMOOTHING;
+          tiltX.setValue(smoothX);
+          tiltY.setValue(smoothY);
+        });
+      } catch {
+        setMotionEnabled(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+      subscription?.remove();
+      Accelerometer.removeAllListeners();
+      tiltX.setValue(0);
+      tiltY.setValue(0);
+    };
+  }, [isFocused, tiltX, tiltY]);
+
+  const noteTransforms = useMemo(
+    () =>
+      NOTE_MOTION.map((motion) => ({
+        translateX: tiltX.interpolate({
+          inputRange: [-1, 1],
+          outputRange: [-motion.ampX, motion.ampX],
+        }),
+        translateY: tiltY.interpolate({
+          inputRange: [-1, 1],
+          outputRange: [-motion.ampY, motion.ampY],
+        }),
+        rotate: tiltX.interpolate({
+          inputRange: [-1, 1],
+          outputRange: [`-${motion.rot}deg`, `${motion.rot}deg`],
+        }),
+      })),
+    [tiltX, tiltY]
+  );
+
   const translateY = bob.interpolate({ inputRange: [0, 1], outputRange: [0, -7] });
 
   const handlePressIn = () => {
@@ -34,6 +141,31 @@ export default function Jar({ onPress, disabled }: JarProps) {
 
   const handlePressOut = () => {
     Animated.spring(scale, { toValue: 1, useNativeDriver: true, friction: 4 }).start();
+  };
+
+  const renderInnerNote = (index: number) => {
+    const color = NOTE_COLORS[index];
+    const style = NOTE_STYLE[index];
+    const motion = noteTransforms[index];
+    const isStatic = !motionEnabled;
+    const transform = isStatic
+      ? [{ rotate: `${style.rotate}deg` }]
+      : [
+          { rotate: `${style.rotate}deg` },
+          { translateX: motion.translateX },
+          { translateY: motion.translateY },
+          { rotate: motion.rotate },
+        ];
+    return (
+      <Animated.View
+        key={index}
+        style={[
+          styles.innerNote,
+          { backgroundColor: color, right: style.right, bottom: style.bottom },
+          { transform },
+        ]}
+      />
+    );
   };
 
   return (
@@ -54,20 +186,7 @@ export default function Jar({ onPress, disabled }: JarProps) {
           <View style={styles.neck} />
           <View style={styles.body}>
             <View style={styles.shine} />
-            {NOTE_COLORS.map((color, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.innerNote,
-                  {
-                    backgroundColor: color,
-                    transform: [{ rotate: `${index === 0 ? -14 : index === 1 ? 8 : -4}deg` }],
-                    right: index === 0 ? 118 : index === 1 ? 52 : 88,
-                    bottom: index === 0 ? 26 : index === 1 ? 14 : 58,
-                  },
-                ]}
-              />
-            ))}
+            {NOTE_COLORS.map((_, index) => renderInnerNote(index))}
           </View>
         </View>
       </Animated.View>

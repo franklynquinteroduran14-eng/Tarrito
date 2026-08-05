@@ -1,3 +1,5 @@
+import Storage from 'expo-sqlite/kv-store';
+
 export interface SpecialEvent {
   date: string;
   title: string;
@@ -5,12 +7,20 @@ export interface SpecialEvent {
   notificationMessage: string;
 }
 
+const SIMULATED_EVENT_KEY = 'simulated_event_date';
+
 export const specialEvents: SpecialEvent[] = [
   {
     date: '02-14',
     title: 'Día de San Valentín',
     homeBannerMessage: '¡Feliz Día de San Valentín! 💖',
     notificationMessage: 'Hoy es un día especial para recordarte lo mucho que te amo 🌹',
+  },
+  {
+    date: '29-02',
+    title: 'Aniversario',
+    homeBannerMessage: '¡Aniversario del Día que nos Conocimos! :3 🩷',
+    notificationMessage: 'El día que un chico de informática, le habló a una chica linda de industrial 🌸',
   },
   {
     date: '04-13',
@@ -84,5 +94,34 @@ export function getTodayEvent(date: Date = new Date()): SpecialEvent | null {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   const key = `${month}-${day}`;
-  return specialEvents.find((event) => event.date === key) ?? null;
+  const directMatch = specialEvents.find((event) => event.date === key);
+  if (directMatch) {
+    return directMatch;
+  }
+  const year = date.getFullYear();
+  const isLeapYear = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+  if (!isLeapYear && key === '03-01') {
+    return specialEvents.find((event) => event.date === '29-02') ?? null;
+  }
+  return null;
+}
+
+export async function getSimulatedEventDate(): Promise<string | null> {
+  return Storage.getItem(SIMULATED_EVENT_KEY);
+}
+
+export async function setSimulatedEventDate(date: string | null): Promise<void> {
+  if (date === null) {
+    await Storage.removeItem(SIMULATED_EVENT_KEY);
+  } else {
+    await Storage.setItem(SIMULATED_EVENT_KEY, date);
+  }
+}
+
+export async function getSimulatedEvent(date: Date = new Date()): Promise<SpecialEvent | null> {
+  const simulated = await Storage.getItem(SIMULATED_EVENT_KEY);
+  if (simulated) {
+    return specialEvents.find((event) => event.date === simulated) ?? null;
+  }
+  return getTodayEvent(date);
 }

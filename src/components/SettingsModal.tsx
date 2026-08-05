@@ -1,19 +1,24 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Modal, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { APP_NAME, APP_VERSION } from '../constants/version';
-import { isSoundEffectsEnabled, setSoundEffectsEnabled } from '../services/sound';
+import { getSoundSettings, setSoundEffectsEnabled } from '../services/sound';
 import { useTheme, type ThemeMode } from '../theme/ThemeContext';
+import LabModal from './lab/LabModal';
 
 interface SettingsModalProps {
   visible: boolean;
   onClose: () => void;
 }
 
+const SECRET_TAPS_NEEDED = 10;
+
 export default function SettingsModal({ visible, onClose }: SettingsModalProps) {
   const { colors, mode, setMode, isDark } = useTheme();
   const styles = createStyles(colors);
   const [soundEffects, setSoundEffects] = useState(true);
   const [soundEffectsReady, setSoundEffectsReady] = useState(false);
+  const [labVisible, setLabVisible] = useState(false);
+  const secretTaps = useRef(0);
 
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const cardScale = useRef(new Animated.Value(0.9)).current;
@@ -24,8 +29,8 @@ export default function SettingsModal({ visible, onClose }: SettingsModalProps) 
     if (!visible) {
       return;
     }
-    isSoundEffectsEnabled().then((enabled) => {
-      setSoundEffects(enabled);
+    getSoundSettings().then((settings) => {
+      setSoundEffects(settings.enabled);
       setSoundEffectsReady(true);
     });
     backdropOpacity.setValue(0);
@@ -63,6 +68,14 @@ export default function SettingsModal({ visible, onClose }: SettingsModalProps) 
     setSoundEffectsEnabled(enabled);
   };
 
+  const handleSecretTap = () => {
+    secretTaps.current += 1;
+    if (secretTaps.current >= SECRET_TAPS_NEEDED) {
+      secretTaps.current = 0;
+      setLabVisible(true);
+    }
+  };
+
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
       <View style={styles.root}>
@@ -83,7 +96,13 @@ export default function SettingsModal({ visible, onClose }: SettingsModalProps) 
               <Text style={styles.closeText}>✕</Text>
             </Pressable>
 
-            <Text style={styles.title}>Ajustes</Text>
+            <Pressable
+              onPress={handleSecretTap}
+              accessibilityRole="button"
+              accessibilityLabel="Ajustes"
+            >
+              <Text style={styles.title}>Ajustes</Text>
+            </Pressable>
 
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>Apariencia</Text>
@@ -131,6 +150,7 @@ export default function SettingsModal({ visible, onClose }: SettingsModalProps) 
           </Animated.View>
         </View>
       </View>
+      <LabModal visible={labVisible} onClose={() => setLabVisible(false)} />
     </Modal>
   );
 }

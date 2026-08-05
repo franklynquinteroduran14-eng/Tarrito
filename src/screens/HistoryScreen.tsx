@@ -5,6 +5,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import type { HistoryNote, Note } from '../types';
 import { getReadHistory } from '../db/notes';
 import { formatDateTime } from '../utils/date';
+import { playOpen } from '../services/sound';
 import { useTheme } from '../theme/ThemeContext';
 import StarRating from '../components/StarRating';
 import NoteModal from '../components/NoteModal';
@@ -46,7 +47,10 @@ export default function HistoryScreen() {
     return (
       <Pressable
         style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-        onPress={() => setSelected(item)}
+        onPress={() => {
+          playOpen();
+          setSelected(item);
+        }}
         accessibilityRole="button"
         accessibilityLabel={`Releer ${item.title}`}
       >

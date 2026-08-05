@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SQLiteProvider, useSQLiteContext } from 'expo-sqlite';
 import { migrateDbIfNeeded } from './src/db/database';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
@@ -44,12 +45,14 @@ function NotificationManager() {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <SQLiteProvider databaseName="tarro.db" onInit={migrateDbIfNeeded}>
-        <NotificationManager />
-        <ThemedStatusBar />
-        <AppNavigator />
-      </SQLiteProvider>
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <SQLiteProvider databaseName="tarro.db" onInit={migrateDbIfNeeded}>
+          <NotificationManager />
+          <ThemedStatusBar />
+          <AppNavigator />
+        </SQLiteProvider>
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }

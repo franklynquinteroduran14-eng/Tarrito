@@ -16,7 +16,7 @@ import {
   type NotificationTriggerInput,
 } from 'expo-notifications/build/Notifications.types';
 import { getUnreadCount } from '../db/notes';
-import { getTodayEvent } from '../data/specialEvents';
+import { getSimulatedEvent, getTodayEvent } from '../data/specialEvents';
 
 /*
  * Nota importante: importamos los módulos internos de expo-notifications
@@ -32,7 +32,29 @@ import { getTodayEvent } from '../data/specialEvents';
  * y setNotificationHandler. Ninguno de esos módulos toca tokens remotos.
  */
 
-const CHANNEL_ID = 'daily-reminders';
+export const CHANNEL_IDS = {
+  daily: 'daily-reminders',
+  events: 'event-reminders',
+} as const;
+
+export type ScheduleSlot = 'morning' | 'release' | 'evening';
+
+export interface SlotTime {
+  hour: number;
+  minute: number;
+}
+
+const TIME_KEYS: Record<ScheduleSlot, string> = {
+  morning: 'notif_time_morning',
+  release: 'notif_time_release',
+  evening: 'notif_time_evening',
+};
+
+const DEFAULT_TIMES: Record<ScheduleSlot, SlotTime> = {
+  morning: { hour: 5, minute: 30 },
+  release: { hour: 13, minute: 0 },
+  evening: { hour: 20, minute: 0 },
+};
 
 const GOOD_MORNING_EMOJIS = ['💖', '💕', '💗', '❤️', '💓', '✨'];
 const RELEASE_MESSAGE = '¡Tienes una nueva carta esperándote en el tarro! 📬';
@@ -56,13 +78,21 @@ export function configureNotificationHandler() {
 }
 
 export async function ensureNotificationChannel() {
-  if (Platform.OS === 'android') {
-    await setNotificationChannelAsync(CHANNEL_ID, {
-      name: 'Recordatorios diarios',
-      importance: AndroidImportance.DEFAULT,
-      vibrationPattern: [0, 250, 250, 250],
-    });
+  if (Platform.OS !== 'android') {
+    return;
   }
+  await setNotificationChannelAsync(CHANNEL_IDS.daily, {
+    name: 'Notificaciones Diarias',
+    importance: AndroidImportance.DEFAULT,
+    sound: 'daily_notification',
+    vibrationPattern: [0, 250, 250, 250],
+  }).catch(() => {});
+  await setNotificationChannelAsync(CHANNEL_IDS.events, {
+    name: 'Eventos Especiales',
+    importance: AndroidImportance.HIGH,
+    sound: 'event_notification',
+    vibrationPattern: [0, 300, 200, 300],
+  }).catch(() => {});
 }
 
 export async function requestNotificationPermissions(): Promise<boolean> {
@@ -76,6 +106,47 @@ export async function requestNotificationPermissions(): Promise<boolean> {
 
 function pickRandomMorningEmoji(): string {
   return GOOD_MORNING_EMOJIS[Math.floor(Math.random() * GOOD_MORNING_EMOJIS.length)];
+}
+
+async function loadSlotTime(slot: ScheduleSlot): Promise<SlotTime> {
+  const stored = await Storage.getItem(TIME_KEYS[slot]);
+  if (!stored) {
+    return DEFAULT_TIMES[slot];
+  }
+  const [hour, minute] = stored.split(':').map(Number);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) {
+    return DEFAULT_TIMES[slot];
+  }
+  return {
+    hour: Math.min(23, Math.max(0, hour)),
+    minute: Math.min(59, Math.max(0, minute)),
+  };
+}
+
+export async function getScheduleTimes(): Promise<Record<ScheduleSlot, SlotTime>> {
+  const [morning, release, evening] = await Promise.all([
+    loadSlotTime('morning'),
+    loadSlotTime('release'),
+    loadSlotTime('evening'),
+  ]);
+  return { morning, release, evening };
+}
+
+export async function setScheduleTime(slot: ScheduleSlot, hour: number, minute: number): Promise<void> {
+  const safeHour = Math.min(23, Math.max(0, hour));
+  const safeMinute = Math.min(59, Math.max(0, minute));
+  await Storage.setItem(
+    TIME_KEYS[slot],
+    `${String(safeHour).padStart(2, '0')}:${String(safeMinute).padStart(2, '0')}`
+  );
+}
+
+export async function resetScheduleTimes(): Promise<void> {
+  await Promise.all([
+    Storage.removeItem(TIME_KEYS.morning),
+    Storage.removeItem(TIME_KEYS.release),
+    Storage.removeItem(TIME_KEYS.evening),
+  ]);
 }
 
 async function scheduleSlot(
@@ -99,29 +170,38 @@ async function cancelSlot(slotKey: string): Promise<void> {
   }
 }
 
-function dailyTrigger(hour: number, minute: number): NotificationTriggerInput {
+function dailyTrigger(hour: number, minute: number, channelId: string): NotificationTriggerInput {
   return {
     type: SchedulableTriggerInputTypes.DAILY,
     hour,
     minute,
-    channelId: CHANNEL_ID,
+    channelId,
+  };
+}
+
+function secondsTrigger(seconds: number, channelId: string): NotificationTriggerInput {
+  return {
+    type: SchedulableTriggerInputTypes.TIME_INTERVAL,
+    seconds,
+    channelId,
   };
 }
 
 export async function scheduleDailyNotifications(db: SQLiteDatabase): Promise<void> {
   const unreadCount = await getUnreadCount(db);
+  const times = await getScheduleTimes();
 
   await scheduleSlot(
     SLOT_KEYS.morning,
     { title: 'Buenos días mi amor', body: pickRandomMorningEmoji() },
-    dailyTrigger(5, 30)
+    dailyTrigger(times.morning.hour, times.morning.minute, CHANNEL_IDS.daily)
   );
 
   if (unreadCount > 0) {
     await scheduleSlot(
       SLOT_KEYS.release,
       { title: 'Nueva carta en el tarro', body: RELEASE_MESSAGE },
-      dailyTrigger(13, 0)
+      dailyTrigger(times.release.hour, times.release.minute, CHANNEL_IDS.daily)
     );
   } else {
     await cancelSlot(SLOT_KEYS.release);
@@ -137,7 +217,11 @@ export async function scheduleDailyNotifications(db: SQLiteDatabase): Promise<vo
       ? 'Recuerda que tienes una nota por leer :3'
       : `Recuerda que tienes ${unreadCount} notas por leer, no dejes a Franklyn esperando por tu respuesta :3`;
 
-  await scheduleSlot(SLOT_KEYS.evening, { title: 'Notas del tarro', body }, dailyTrigger(20, 0));
+  await scheduleSlot(
+    SLOT_KEYS.evening,
+    { title: 'Notas del tarro', body },
+    dailyTrigger(times.evening.hour, times.evening.minute, CHANNEL_IDS.daily)
+  );
 }
 
 export async function scheduleTodaySpecialEvent(): Promise<void> {
@@ -165,13 +249,9 @@ export async function scheduleTodaySpecialEvent(): Promise<void> {
       ? {
           type: SchedulableTriggerInputTypes.DATE,
           date: scheduledAt,
-          channelId: CHANNEL_ID,
+          channelId: CHANNEL_IDS.events,
         }
-      : {
-          type: SchedulableTriggerInputTypes.TIME_INTERVAL,
-          seconds: 5,
-          channelId: CHANNEL_ID,
-        };
+      : secondsTrigger(5, CHANNEL_IDS.events);
 
   await scheduleSlot(
     SLOT_KEYS.special,
@@ -179,4 +259,25 @@ export async function scheduleTodaySpecialEvent(): Promise<void> {
     trigger
   );
   await Storage.setItem(flagKey, '1');
+}
+
+export async function forceTestNotification(): Promise<void> {
+  await scheduleNotificationAsync({
+    content: {
+      title: 'Nota de prueba 🔔',
+      body: 'Notificación diaria de prueba. Si la ves, todo funciona. 💕',
+    },
+    trigger: secondsTrigger(5, CHANNEL_IDS.daily),
+  });
+}
+
+export async function forceTestEventNotification(): Promise<void> {
+  const event = await getSimulatedEvent();
+  await scheduleNotificationAsync({
+    content: {
+      title: event?.title ?? 'Evento especial',
+      body: event?.notificationMessage ?? 'Hoy es un día especial para nosotros ✨',
+    },
+    trigger: secondsTrigger(5, CHANNEL_IDS.events),
+  });
 }
