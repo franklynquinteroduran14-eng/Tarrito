@@ -3,7 +3,7 @@ import { Animated, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View 
 import { APP_NAME, APP_VERSION } from '../constants/version';
 import { getSoundSettings, setSoundEffectsEnabled } from '../services/sound';
 import { useTheme } from '../theme/ThemeContext';
-import { THEMES, type ThemeMode } from '../theme/colors';
+import { THEMES, THEME_IDS, type ThemeMode } from '../theme/colors';
 import PressableScale from './PressableScale';
 import LabModal from './lab/LabModal';
 
@@ -13,8 +13,6 @@ interface SettingsModalProps {
 }
 
 const SECRET_TAPS_NEEDED = 10;
-
-const QUICK_THEMES: ThemeMode[] = ['organico', 'noche', 'romantico', 'otono'];
 
 export default function SettingsModal({ visible, onClose }: SettingsModalProps) {
   const { colors, mode, setMode, isDark } = useTheme();
@@ -115,14 +113,14 @@ export default function SettingsModal({ visible, onClose }: SettingsModalProps) 
               <View style={styles.section}>
                 <Text style={styles.sectionLabel}>Apariencia</Text>
                 <View style={styles.modeRow}>
-                  {QUICK_THEMES.map((id) =>
+                  {THEME_IDS.map((id) =>
                     renderModeOption(id, THEMES[id].label, THEMES[id].icon)
                   )}
                 </View>
                 <Text style={styles.sectionHint}>
                   {isDark
                     ? 'Tema Noche Profunda activado, ideal para noches tranquilas.'
-                    : `Tema ${THEMES[mode].label} activado. Los 14 temas viven en el Laboratorio 🧪`}
+                    : `Tema ${THEMES[mode].label} activado. Desliza para ver todos los temas.`}
                 </Text>
               </View>
 
