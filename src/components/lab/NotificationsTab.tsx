@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { useSQLiteContext } from 'expo-sqlite';
+import PressableScale from '../PressableScale';
 import {
   forceTestEventNotification,
   forceTestNotification,
@@ -67,12 +68,12 @@ export default function NotificationsTab() {
 
   const testRegular = async () => {
     await forceTestNotification();
-    setMessage('Notificación regular enviada, llega en ~5 segundos ✓');
+    setMessage('Notificación regular enviada, se muestra al instante ✓');
   };
 
   const testEvent = async () => {
     await forceTestEventNotification();
-    setMessage('Notificación de evento enviada, llega en ~5 segundos ✓');
+    setMessage('Notificación de evento enviada, se muestra al instante ✓');
   };
 
   return (
@@ -89,66 +90,66 @@ export default function NotificationsTab() {
           </View>
           <View style={[styles.row, { marginTop: 10, justifyContent: 'space-between' }]}>
             <View style={styles.row}>
-              <Pressable
+              <PressableScale
                 style={styles.stepperButton}
                 onPress={() => adjust(slot.id, -1, 0)}
-                accessibilityRole="button"
+                scaleTo={0.85}
                 accessibilityLabel={`Restar una hora a ${slot.label}`}
               >
                 <Text style={styles.stepperText}>−</Text>
-              </Pressable>
+              </PressableScale>
               <Text style={{ fontSize: 12, color: colors.textSecondary, fontWeight: '700' }}>hora</Text>
-              <Pressable
+              <PressableScale
                 style={styles.stepperButton}
                 onPress={() => adjust(slot.id, 1, 0)}
-                accessibilityRole="button"
+                scaleTo={0.85}
                 accessibilityLabel={`Sumar una hora a ${slot.label}`}
               >
                 <Text style={styles.stepperText}>+</Text>
-              </Pressable>
+              </PressableScale>
             </View>
             <View style={styles.row}>
-              <Pressable
+              <PressableScale
                 style={styles.stepperButton}
                 onPress={() => adjust(slot.id, 0, -5)}
-                accessibilityRole="button"
+                scaleTo={0.85}
                 accessibilityLabel={`Restar cinco minutos a ${slot.label}`}
               >
                 <Text style={styles.stepperText}>−</Text>
-              </Pressable>
+              </PressableScale>
               <Text style={{ fontSize: 12, color: colors.textSecondary, fontWeight: '700' }}>min</Text>
-              <Pressable
+              <PressableScale
                 style={styles.stepperButton}
                 onPress={() => adjust(slot.id, 0, 5)}
-                accessibilityRole="button"
+                scaleTo={0.85}
                 accessibilityLabel={`Sumar cinco minutos a ${slot.label}`}
               >
                 <Text style={styles.stepperText}>+</Text>
-              </Pressable>
+              </PressableScale>
             </View>
           </View>
         </View>
       ))}
 
       <View style={{ rowGap: 8 }}>
-        <Pressable style={styles.buttonPrimary} onPress={save} accessibilityRole="button">
+        <PressableScale style={styles.buttonPrimary} onPress={save}>
           <Text style={styles.buttonPrimaryText}>Guardar horarios</Text>
-        </Pressable>
-        <Pressable style={styles.smallButton} onPress={restore} accessibilityRole="button">
+        </PressableScale>
+        <PressableScale style={styles.smallButton} onPress={restore} scaleTo={0.97}>
           <Text style={styles.smallButtonText}>Restaurar por defecto (5:30 · 13:00 · 20:00)</Text>
-        </Pressable>
+        </PressableScale>
       </View>
 
       {message && <Text style={styles.message}>{message}</Text>}
 
       <Text style={styles.sectionLabel}>Prueba de notificaciones</Text>
       <View style={{ rowGap: 8 }}>
-        <Pressable style={styles.buttonPrimary} onPress={testRegular} accessibilityRole="button">
-          <Text style={styles.buttonPrimaryText}>🔔 Forzar notificación regular (5s)</Text>
-        </Pressable>
-        <Pressable style={styles.buttonPrimary} onPress={testEvent} accessibilityRole="button">
-          <Text style={styles.buttonPrimaryText}>🎉 Forzar notificación del evento de hoy (5s)</Text>
-        </Pressable>
+        <PressableScale style={styles.buttonPrimary} onPress={testRegular}>
+          <Text style={styles.buttonPrimaryText}>🔔 Forzar notificación regular (al instante)</Text>
+        </PressableScale>
+        <PressableScale style={styles.buttonPrimary} onPress={testEvent}>
+          <Text style={styles.buttonPrimaryText}>🎉 Forzar notificación del evento de hoy (al instante)</Text>
+        </PressableScale>
       </View>
 
       <Text style={[styles.hint, { marginTop: 10 }]}>

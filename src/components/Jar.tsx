@@ -94,7 +94,7 @@ export default function Jar({ onPress, disabled }: JarProps) {
             return;
           }
           const rawX = clamp(-(x - baselineX) * TILT_SCALE);
-          const rawY = clamp(-(y - baselineY) * TILT_SCALE);
+          const rawY = clamp((y - baselineY) * TILT_SCALE);
           smoothX += (rawX - smoothX) * SMOOTHING;
           smoothY += (rawY - smoothY) * SMOOTHING;
           tiltX.setValue(smoothX);

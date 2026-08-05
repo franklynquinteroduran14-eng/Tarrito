@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
+import PressableScale from '../PressableScale';
 import {
   getSimulatedEventDate,
   setSimulatedEventDate,
@@ -38,10 +39,10 @@ export default function EventsTab() {
     <View>
       <Text style={styles.sectionLabel}>Simular un evento especial</Text>
       <View style={{ rowGap: 8 }}>
-        <Pressable
+        <PressableScale
           style={[styles.card, selectedDate === null && styles.cardSelected]}
           onPress={() => apply(null)}
-          accessibilityRole="button"
+          scaleTo={0.98}
           accessibilityState={{ selected: selectedDate === null }}
         >
           <View style={styles.row}>
@@ -49,15 +50,15 @@ export default function EventsTab() {
             <Text style={styles.label}>Sin evento (fecha real)</Text>
             {selectedDate === null && <Text style={{ color: colors.accent, fontWeight: '800' }}>✓</Text>}
           </View>
-        </Pressable>
+        </PressableScale>
         {specialEvents.map((event) => {
           const isSelected = selectedDate === event.date;
           return (
-            <Pressable
+            <PressableScale
               key={`${event.date}-${event.title}`}
               style={[styles.card, isSelected && styles.cardSelected]}
               onPress={() => apply(event.date)}
-              accessibilityRole="button"
+              scaleTo={0.98}
               accessibilityState={{ selected: isSelected }}
             >
               <View style={styles.row}>
@@ -68,7 +69,7 @@ export default function EventsTab() {
                 <Text style={[styles.smallButtonText, { fontSize: 12 }]}>{event.date}</Text>
                 {isSelected && <Text style={{ color: colors.accent, fontWeight: '800' }}>✓</Text>}
               </View>
-            </Pressable>
+            </PressableScale>
           );
         })}
       </View>
@@ -91,13 +92,13 @@ export default function EventsTab() {
         )}
       </View>
 
-      <Pressable
+      <PressableScale
         style={styles.smallButton}
         onPress={() => apply(null)}
-        accessibilityRole="button"
+        scaleTo={0.97}
       >
         <Text style={styles.smallButtonText}>Restablecer fecha real</Text>
-      </Pressable>
+      </PressableScale>
     </View>
   );
 }

@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSQLiteContext } from 'expo-sqlite';
 import type { HistoryNote, Note } from '../types';
@@ -9,6 +9,7 @@ import { playOpen } from '../services/sound';
 import { useTheme } from '../theme/ThemeContext';
 import StarRating from '../components/StarRating';
 import NoteModal from '../components/NoteModal';
+import PressableScale from '../components/PressableScale';
 import SettingsModal from '../components/SettingsModal';
 
 function mediaBadge(note: HistoryNote): { icon: string; label: string } | null {
@@ -92,14 +93,14 @@ export default function HistoryScreen() {
               : 'Tus notas leídas, guardadas para siempre'}
           </Text>
         </View>
-        <TouchableOpacity
+        <PressableScale
           style={styles.settingsButton}
           onPress={() => setSettingsVisible(true)}
-          accessibilityRole="button"
+          scaleTo={0.88}
           accessibilityLabel="Abrir ajustes"
         >
           <Text style={styles.settingsIcon}>⚙️</Text>
-        </TouchableOpacity>
+        </PressableScale>
       </View>
 
       {loading ? (

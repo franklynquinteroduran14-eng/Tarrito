@@ -18,6 +18,7 @@ import type { MediaAttachment, Note } from '../types';
 import { getNoteFeedback, getNoteMedia, incrementTimesOpened, saveFeedbackAndMarkRead } from '../db/notes';
 import { formatDate } from '../utils/date';
 import { useTheme } from '../theme/ThemeContext';
+import PressableScale from './PressableScale';
 import StarRating from './StarRating';
 
 interface NoteModalProps {
@@ -221,16 +222,15 @@ export default function NoteModal({
                           onChangeText={setComment}
                         />
                         {error && <Text style={styles.errorText}>{error}</Text>}
-                        <TouchableOpacity
+                        <PressableScale
                           style={[styles.saveButton, (saving || rating === 0) && styles.saveButtonDisabled]}
                           onPress={handleSave}
                           disabled={saving || rating === 0}
-                          accessibilityRole="button"
                         >
                           <Text style={styles.saveButtonText}>
                             {saving ? 'Guardando…' : 'Guardar y marcar como leída'}
                           </Text>
-                        </TouchableOpacity>
+                        </PressableScale>
                       </>
                     )}
                   </View>

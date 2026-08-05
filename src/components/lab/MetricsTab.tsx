@@ -1,7 +1,8 @@
 import { useCallback, useState } from 'react';
-import { Alert, Pressable, Text, View } from 'react-native';
+import { Alert, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSQLiteContext } from 'expo-sqlite';
+import PressableScale from '../PressableScale';
 import { getNotesMetrics, getOpensByNote, resetAppState } from '../../db/notes';
 import type { NotesMetrics } from '../../types';
 import { useTheme } from '../../theme/ThemeContext';
@@ -91,9 +92,9 @@ export default function MetricsTab() {
       </View>
 
       <Text style={styles.sectionLabel}>Zona de peligro</Text>
-      <Pressable style={styles.buttonDanger} onPress={confirmReset} accessibilityRole="button">
+      <PressableScale style={styles.buttonDanger} onPress={confirmReset}>
         <Text style={styles.buttonDangerText}>Reiniciar aplicación</Text>
-      </Pressable>
+      </PressableScale>
       <Text style={[styles.hint, { marginTop: 8, color: colors.textSecondary }]}>
         Marca todas las notas como no leídas y borra las reseñas del historial.
       </Text>

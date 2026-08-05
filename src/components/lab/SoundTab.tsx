@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
+import PressableScale from '../PressableScale';
 import {
   getSoundSettings,
   previewSound,
@@ -40,27 +41,27 @@ export default function SoundTab() {
   ) => {
     const isSelected = selected === option.id;
     return (
-      <Pressable
+      <PressableScale
         key={option.id}
         style={[styles.card, isSelected && styles.cardSelected]}
         onPress={() => {
           onSelect(option.id);
           previewSound(option.id);
         }}
-        accessibilityRole="button"
+        scaleTo={0.98}
         accessibilityLabel={`${option.name}: tocar para probar y seleccionar`}
       >
         <View style={styles.row}>
           <Text style={{ fontSize: 17 }}>{option.icon}</Text>
           <Text style={styles.label}>{option.name}</Text>
-          <Pressable
+          <PressableScale
             style={styles.smallButton}
             onPress={() => previewSound(option.id)}
-            accessibilityRole="button"
+            scaleTo={0.85}
             accessibilityLabel={`Probar ${option.name}`}
           >
             <Text style={styles.smallButtonText}>▶</Text>
-          </Pressable>
+          </PressableScale>
           <Text
             style={{
               width: 18,
@@ -73,7 +74,7 @@ export default function SoundTab() {
             {isSelected ? '✓' : '○'}
           </Text>
         </View>
-      </Pressable>
+      </PressableScale>
     );
   };
 
@@ -104,14 +105,14 @@ export default function SoundTab() {
         {VOLUME_OPTIONS.map((option) => {
           const isSelected = Math.abs(volume - option.value) < 0.001;
           return (
-            <Pressable
+            <PressableScale
               key={option.label}
               style={[styles.card, { flex: 1, alignItems: 'center' }, isSelected && styles.cardSelected]}
               onPress={() => {
                 setVolume(option.value);
                 setSoundVolume(option.value);
               }}
-              accessibilityRole="button"
+              scaleTo={0.94}
               accessibilityState={{ selected: isSelected }}
             >
               <Text
@@ -123,7 +124,7 @@ export default function SoundTab() {
               >
                 {option.label}
               </Text>
-            </Pressable>
+            </PressableScale>
           );
         })}
       </View>

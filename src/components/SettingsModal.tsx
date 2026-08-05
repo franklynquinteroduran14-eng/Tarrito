@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Modal, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { APP_NAME, APP_VERSION } from '../constants/version';
 import { getSoundSettings, setSoundEffectsEnabled } from '../services/sound';
-import { useTheme, type ThemeMode } from '../theme/ThemeContext';
+import { useTheme } from '../theme/ThemeContext';
+import { THEMES, THEME_IDS, type ThemeMode } from '../theme/colors';
+import PressableScale from './PressableScale';
 import LabModal from './lab/LabModal';
 
 interface SettingsModalProps {
@@ -48,18 +50,17 @@ export default function SettingsModal({ visible, onClose }: SettingsModalProps) 
   const renderModeOption = (option: ThemeMode, label: string, icon: string) => {
     const selected = mode === option;
     return (
-      <Pressable
+      <PressableScale
         key={option}
         style={[styles.modeOption, selected && styles.modeOptionSelected]}
         onPress={() => setMode(option)}
-        accessibilityRole="button"
         accessibilityState={{ selected }}
       >
         <Text style={styles.modeOptionIcon}>{icon}</Text>
         <Text style={[styles.modeOptionText, selected && styles.modeOptionTextSelected]}>
           {label}
         </Text>
-      </Pressable>
+      </PressableScale>
     );
   };
 
@@ -107,13 +108,14 @@ export default function SettingsModal({ visible, onClose }: SettingsModalProps) 
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>Apariencia</Text>
               <View style={styles.modeRow}>
-                {renderModeOption('light', 'Claro', '☀️')}
-                {renderModeOption('dark', 'Oscuro', '🌙')}
+                {THEME_IDS.map((id) =>
+                  renderModeOption(id, THEMES[id].label, THEMES[id].icon)
+                )}
               </View>
               <Text style={styles.sectionHint}>
                 {isDark
-                  ? 'Tema oscuro activado, ideal para noches tranquilas.'
-                  : 'Tema claro activado, ideal para leer tus notas.'}
+                  ? 'Tema Noche Profunda activado, ideal para noches tranquilas.'
+                  : `Tema ${THEMES[mode].label} activado. Cambia los colores en el Laboratorio.`}
               </Text>
             </View>
 
@@ -221,16 +223,19 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
     },
     modeRow: {
       flexDirection: 'row',
-      columnGap: 12,
+      flexWrap: 'wrap',
+      columnGap: 10,
+      rowGap: 10,
     },
     modeOption: {
-      flex: 1,
+      width: '48%',
       borderRadius: 16,
       borderWidth: 1.5,
       borderColor: colors.border,
       backgroundColor: colors.inputBg,
       alignItems: 'center',
-      paddingVertical: 16,
+      paddingVertical: 14,
+      paddingHorizontal: 6,
     },
     modeOptionSelected: {
       borderColor: colors.accent,

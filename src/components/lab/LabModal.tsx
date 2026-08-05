@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { createLabStyles } from './styles';
+import PressableScale from '../PressableScale';
 import SoundTab from './SoundTab';
+import ThemesTab from './ThemesTab';
 import NotificationsTab from './NotificationsTab';
 import MetricsTab from './MetricsTab';
 import EventsTab from './EventsTab';
@@ -15,6 +17,7 @@ interface LabModalProps {
 
 const TABS = [
   { id: 'sounds', icon: '🔊', label: 'Sonidos' },
+  { id: 'themes', icon: '🎨', label: 'Temas' },
   { id: 'notifications', icon: '🔔', label: 'Notificaciones' },
   { id: 'metrics', icon: '📊', label: 'Métricas' },
   { id: 'events', icon: '📅', label: 'Eventos' },
@@ -82,11 +85,11 @@ export default function LabModal({ visible, onClose }: LabModalProps) {
               {TABS.map((item) => {
                 const isSelected = tab === item.id;
                 return (
-                  <Pressable
+                  <PressableScale
                     key={item.id}
                     style={[shellStyles.tabChip, isSelected && shellStyles.tabChipSelected]}
                     onPress={() => setTab(item.id)}
-                    accessibilityRole="button"
+                    scaleTo={0.92}
                     accessibilityState={{ selected: isSelected }}
                   >
                     <Text style={shellStyles.tabChipIcon}>{item.icon}</Text>
@@ -95,7 +98,7 @@ export default function LabModal({ visible, onClose }: LabModalProps) {
                     >
                       {item.label}
                     </Text>
-                  </Pressable>
+                  </PressableScale>
                 );
               })}
             </ScrollView>
@@ -107,6 +110,7 @@ export default function LabModal({ visible, onClose }: LabModalProps) {
               keyboardShouldPersistTaps="handled"
             >
               {tab === 'sounds' && <SoundTab />}
+              {tab === 'themes' && <ThemesTab />}
               {tab === 'notifications' && <NotificationsTab />}
               {tab === 'metrics' && <MetricsTab />}
               {tab === 'events' && <EventsTab />}
@@ -184,28 +188,30 @@ const createShellStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       flexGrow: 0,
     },
     tabBarContent: {
-      columnGap: 8,
+      columnGap: 10,
+      paddingHorizontal: 2,
     },
     tabChip: {
       flexDirection: 'row',
       alignItems: 'center',
-      columnGap: 6,
-      borderRadius: 14,
+      columnGap: 7,
+      borderRadius: 16,
       borderWidth: 1.5,
       borderColor: colors.border,
       backgroundColor: colors.inputBg,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      minHeight: 44,
     },
     tabChipSelected: {
       borderColor: colors.accent,
       backgroundColor: colors.accentSoft,
     },
     tabChipIcon: {
-      fontSize: 14,
+      fontSize: 16,
     },
     tabChipText: {
-      fontSize: 13,
+      fontSize: 14,
       fontWeight: '700',
       color: colors.textSecondary,
     },

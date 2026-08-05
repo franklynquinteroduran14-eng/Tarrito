@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSQLiteContext } from 'expo-sqlite';
+import PressableScale from '../PressableScale';
 import { getAllNotesForAdmin } from '../../db/notes';
 import { clearForcedNoteId, getForcedNoteId, setForcedNoteId } from '../../services/release';
 import { formatDateTime } from '../../utils/date';
@@ -101,10 +102,10 @@ export default function NotesTab() {
         </Text>
 
         <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10 }}>
-          <Pressable
+          <PressableScale
             style={[styles.forceButton, isForced && styles.forceButtonActive]}
             onPress={() => toggleForced(note.id)}
-            accessibilityRole="button"
+            scaleTo={0.93}
             accessibilityLabel={
               isForced ? `Quitar ${note.title} como forzada` : `Forzar ${note.title} como siguiente`
             }
@@ -112,7 +113,7 @@ export default function NotesTab() {
             <Text style={[styles.forceButtonText, isForced && styles.forceButtonTextActive]}>
               {isForced ? '🎯 Forzada · Quitar' : '🎯 Forzar siguiente'}
             </Text>
-          </Pressable>
+          </PressableScale>
         </View>
       </Pressable>
     );

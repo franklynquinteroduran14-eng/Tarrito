@@ -1,8 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import Storage from 'expo-sqlite/kv-store';
-import { darkColors, lightColors, type ThemeColors } from './colors';
+import { THEMES, THEME_IDS, type ThemeColors, type ThemeMode } from './colors';
 
-export type ThemeMode = 'light' | 'dark';
+export type { ThemeMode } from './colors';
 
 interface ThemeContextValue {
   mode: ThemeMode;
@@ -17,12 +17,12 @@ const STORAGE_KEY = 'theme_mode';
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [mode, setModeState] = useState<ThemeMode>('light');
+  const [mode, setModeState] = useState<ThemeMode>('organico');
 
   useEffect(() => {
     Storage.getItem(STORAGE_KEY).then((stored) => {
-      if (stored === 'light' || stored === 'dark') {
-        setModeState(stored);
+      if (stored && THEME_IDS.includes(stored as ThemeMode)) {
+        setModeState(stored as ThemeMode);
       }
     });
   }, []);
@@ -33,14 +33,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const toggleMode = useCallback(() => {
-    setMode(mode === 'light' ? 'dark' : 'light');
+    setMode(mode === 'noche' ? 'organico' : 'noche');
   }, [mode, setMode]);
 
   const value = useMemo<ThemeContextValue>(
     () => ({
       mode,
-      isDark: mode === 'dark',
-      colors: mode === 'dark' ? darkColors : lightColors,
+      isDark: THEMES[mode].isDark,
+      colors: THEMES[mode].colors,
       setMode,
       toggleMode,
     }),

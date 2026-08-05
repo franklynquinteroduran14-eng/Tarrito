@@ -267,7 +267,7 @@ export async function forceTestNotification(): Promise<void> {
       title: 'Nota de prueba 🔔',
       body: 'Notificación diaria de prueba. Si la ves, todo funciona. 💕',
     },
-    trigger: secondsTrigger(5, CHANNEL_IDS.daily),
+    trigger: secondsTrigger(1, CHANNEL_IDS.daily),
   });
 }
 
@@ -278,6 +278,6 @@ export async function forceTestEventNotification(): Promise<void> {
       title: event?.title ?? 'Evento especial',
       body: event?.notificationMessage ?? 'Hoy es un día especial para nosotros ✨',
     },
-    trigger: secondsTrigger(5, CHANNEL_IDS.events),
+    trigger: secondsTrigger(1, CHANNEL_IDS.events),
   });
 }

@@ -82,12 +82,6 @@ export const specialEvents: SpecialEvent[] = [
     homeBannerMessage: '¡Feliz Aniversario Mi Amor! 🥂',
     notificationMessage: 'Hoy celebramos otro año de nosotros, te amo ❤️',
   },
-  {
-    date: '00-00',
-    title: 'Fecha Especial Nuestra',
-    homeBannerMessage: '¡Un día especial para nosotros! 💝',
-    notificationMessage: 'Hoy es un día nuestro, que nunca deje de celebrarse ✨',
-  },
 ];
 
 export function getTodayEvent(date: Date = new Date()): SpecialEvent | null {
