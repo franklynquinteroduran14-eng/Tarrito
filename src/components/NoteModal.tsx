@@ -16,6 +16,7 @@ import {
 import { useSQLiteContext } from 'expo-sqlite';
 import type { MediaAttachment, Note } from '../types';
 import { getNoteFeedback, getNoteMedia, incrementTimesOpened, saveFeedbackAndMarkRead } from '../db/notes';
+import { NOTE_IMAGES } from '../data/noteImages';
 import { formatDate } from '../utils/date';
 import { useTheme } from '../theme/ThemeContext';
 import PressableScale from './PressableScale';
@@ -34,7 +35,14 @@ function MediaItem({ item }: { item: MediaAttachment }) {
   const { colors } = useTheme();
   const styles = createStyles(colors);
   if (item.type === 'image') {
-    return <Image source={{ uri: item.url }} style={styles.mediaImage} resizeMode="cover" />;
+    const local = NOTE_IMAGES[item.url];
+    return (
+      <Image
+        source={local ?? { uri: item.url }}
+        style={styles.mediaImage}
+        resizeMode="cover"
+      />
+    );
   }
   return (
     <TouchableOpacity

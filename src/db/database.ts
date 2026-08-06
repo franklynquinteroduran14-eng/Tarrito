@@ -1,8 +1,11 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
-import mockNotesData from '../data/mockNotes.json';
+import type { SeedNote } from '../types';
+import rawMockNotesData from '../data/mockNotes.json';
 import { addReleaseBypassIds } from '../services/release';
 
-const DATABASE_VERSION = 4;
+const mockNotesData = rawMockNotesData as { notes: SeedNote[] };
+
+const DATABASE_VERSION = 5;
 
 const SCHEMA_SQL = `
 PRAGMA journal_mode = WAL;
@@ -67,6 +70,19 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
   }
 
   if (currentDbVersion < 3) {
+    await seedDatabase(db);
+    const pendingRows = await db.getAllAsync<{ id: string }>(
+      'SELECT id FROM notes WHERE is_read = 0'
+    );
+    await addReleaseBypassIds(pendingRows.map((row) => row.id));
+  }
+
+  if (currentDbVersion < 5) {
+    await db.withExclusiveTransactionAsync(async (txn) => {
+      await txn.runAsync('DELETE FROM media_attachments');
+      await txn.runAsync('DELETE FROM user_feedback');
+      await txn.runAsync('DELETE FROM notes');
+    });
     await seedDatabase(db);
     const pendingRows = await db.getAllAsync<{ id: string }>(
       'SELECT id FROM notes WHERE is_read = 0'
