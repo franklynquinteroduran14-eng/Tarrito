@@ -125,7 +125,7 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.appName}>El Tarro de Notas</Text>
+        <Text style={styles.appName}>Tarrito de Notas</Text>
         <Text style={styles.subtitle}>Toca el tarro para sacar una sorpresa</Text>
       </View>
 

@@ -139,7 +139,9 @@ export async function getOpensByNote(
 
 export async function resetAppState(db: SQLiteDatabase): Promise<void> {
   await db.withExclusiveTransactionAsync(async (txn) => {
-    await txn.runAsync('UPDATE notes SET is_read = 0');
+    await txn.runAsync('UPDATE notes SET is_read = 0, times_opened = 0');
     await txn.runAsync('DELETE FROM user_feedback');
   });
+  const { clearForcedNoteId } = await import('../services/release');
+  await clearForcedNoteId();
 }

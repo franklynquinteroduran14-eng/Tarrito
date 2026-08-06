@@ -186,14 +186,17 @@ const createShellStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
     tabBar: {
       marginTop: 12,
       flexGrow: 0,
+      height: 52,
     },
     tabBarContent: {
       gap: 8,
       paddingHorizontal: 16,
+      alignItems: 'center',
     },
     tabChip: {
       flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'center',
       columnGap: 7,
       borderRadius: 16,
       borderWidth: 1.5,
@@ -201,7 +204,7 @@ const createShellStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       backgroundColor: colors.inputBg,
       paddingHorizontal: 16,
       paddingVertical: 10,
-      minHeight: 44,
+      height: 48,
     },
     tabChipSelected: {
       borderColor: colors.accent,

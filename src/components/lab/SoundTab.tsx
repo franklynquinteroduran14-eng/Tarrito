@@ -16,15 +16,15 @@ import { createLabStyles } from './styles';
 const VOLUME_OPTIONS = [
   { label: 'Suave', value: 0.2 },
   { label: 'Medio', value: 0.45 },
-  { label: 'Fuerte', value: 0.75 },
+  { label: 'Fuerte', value: 1 },
 ];
 
 export default function SoundTab() {
   const { colors } = useTheme();
   const styles = createLabStyles(colors);
-  const [drawSound, setDrawSoundId] = useState<SoundId>('pop');
-  const [openSound, setOpenSoundId] = useState<SoundId>('chime');
-  const [volume, setVolume] = useState(0.45);
+  const [drawSound, setDrawSoundId] = useState<SoundId>('bell');
+  const [openSound, setOpenSoundId] = useState<SoundId>('sparkle');
+  const [volume, setVolume] = useState(1);
 
   useEffect(() => {
     getSoundSettings().then((settings) => {

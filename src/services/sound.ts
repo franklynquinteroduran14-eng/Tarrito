@@ -41,12 +41,12 @@ const SOUND_FILES: Record<SoundId, number> = {
   harp: require('../../assets/sounds/harp.wav'),
 };
 
-const DEFAULT_VOLUME = 0.35;
+const DEFAULT_VOLUME = 1;
 
 let settings: SoundSettings = {
   enabled: true,
-  drawSound: 'pop',
-  openSound: 'chime',
+  drawSound: 'bell',
+  openSound: 'sparkle',
   volume: DEFAULT_VOLUME,
 };
 
@@ -149,4 +149,23 @@ export function playOpen(): void {
 
 export function previewSound(id: SoundId): void {
   void playEffect(id, true);
+}
+
+const STARTUP_JINGLE = require('../../assets/sounds/inicio/NintendoDs_Sound.mp3');
+
+export async function playStartupJingle(): Promise<number | null> {
+  try {
+    const { sound } = await Audio.Sound.createAsync(STARTUP_JINGLE);
+    await sound.setVolumeAsync(1);
+    await sound.playAsync();
+    const status = await sound.getStatusAsync();
+    sound.setOnPlaybackStatusUpdate((playbackStatus) => {
+      if (playbackStatus.isLoaded && playbackStatus.didJustFinish) {
+        sound.unloadAsync().catch(() => {});
+      }
+    });
+    return status.isLoaded && status.durationMillis != null ? status.durationMillis : null;
+  } catch {
+    return null;
+  }
 }
