@@ -2,7 +2,7 @@
   "expo": {
     "name": "Tarrito de Notas",
     "slug": "ElTarroDeNotas",
-    "version": "0.2.9",
+    "version": "0.2.10",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
