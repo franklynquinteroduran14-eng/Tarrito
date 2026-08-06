@@ -137,6 +137,7 @@ export default function NotesTab() {
         note={preview}
         onClose={() => setPreview(null)}
         readOnly
+        countOpen={false}
       />
     </View>
   );

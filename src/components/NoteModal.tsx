@@ -11,6 +11,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { useSQLiteContext } from 'expo-sqlite';
@@ -29,18 +30,59 @@ interface NoteModalProps {
   onSaved?: () => void;
   readOnly?: boolean;
   dismissable?: boolean;
+  countOpen?: boolean;
+}
+
+const CARD_HORIZONTAL_INSETS = 92;
+const MAX_IMAGE_HEIGHT_RATIO = 0.6;
+
+function getFitSize(
+  aspect: number,
+  screenWidth: number,
+  screenHeight: number
+): { width: number; height: number; alignSelf: 'center' } {
+  const cardWidth = screenWidth - CARD_HORIZONTAL_INSETS;
+  const maxHeight = screenHeight * MAX_IMAGE_HEIGHT_RATIO;
+  let width = cardWidth;
+  let height = width / aspect;
+  if (height > maxHeight) {
+    height = maxHeight;
+    width = height * aspect;
+  }
+  return { width: Math.round(width), height: Math.round(height), alignSelf: 'center' };
 }
 
 function MediaItem({ item }: { item: MediaAttachment }) {
   const { colors } = useTheme();
   const styles = createStyles(colors);
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const [remoteAspect, setRemoteAspect] = useState<number | null>(null);
   if (item.type === 'image') {
     const local = NOTE_IMAGES[item.url];
+    const aspect = local
+      ? local.width / local.height
+      : remoteAspect ?? null;
     return (
       <Image
-        source={local ?? { uri: item.url }}
-        style={styles.mediaImage}
-        resizeMode="cover"
+        source={local ? local.source : { uri: item.url }}
+        style={[
+          styles.mediaImage,
+          aspect === null
+            ? styles.mediaImageFallback
+            : getFitSize(aspect, screenWidth, screenHeight),
+        ]}
+        resizeMode="contain"
+        onLoad={
+          local
+            ? undefined
+            : () => {
+                Image.getSize(
+                  item.url,
+                  (width, height) => setRemoteAspect(width / height),
+                  () => {}
+                );
+              }
+        }
       />
     );
   }
@@ -65,6 +107,7 @@ export default function NoteModal({
   onSaved,
   readOnly = false,
   dismissable = true,
+  countOpen = true,
 }: NoteModalProps) {
   const db = useSQLiteContext();
   const { colors } = useTheme();
@@ -119,8 +162,10 @@ export default function NoteModal({
         setReadAt(feedback.read_at);
       }
     });
-    incrementTimesOpened(db, note.id);
-  }, [db, note]);
+    if (countOpen) {
+      incrementTimesOpened(db, note.id);
+    }
+  }, [db, note, countOpen]);
 
   const handleSave = async () => {
     if (!note || rating < 1 || saving) {
@@ -342,9 +387,11 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
     },
     mediaImage: {
       width: '100%',
-      height: 200,
       borderRadius: 16,
       backgroundColor: colors.accentSoft,
+    },
+    mediaImageFallback: {
+      height: 200,
     },
     mediaLink: {
       flexDirection: 'row',

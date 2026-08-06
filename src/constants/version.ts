@@ -1,2 +1,2 @@
 export const APP_NAME = 'Tarrito de Notas';
-export const APP_VERSION = '0.2.11';
+export const APP_VERSION = '0.2.15';
