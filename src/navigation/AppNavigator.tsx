@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import HomeScreen from '../screens/HomeScreen';
 import HistoryScreen from '../screens/HistoryScreen';
+import CalendarScreen from '../screens/CalendarScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -53,6 +54,14 @@ export default function AppNavigator() {
           options={{
             tabBarLabel: 'Recuerdos',
             tabBarIcon: ({ color }) => <TabIcon icon="📖" color={color} />,
+          }}
+        />
+        <Tab.Screen
+          name="Calendario"
+          component={CalendarScreen}
+          options={{
+            tabBarLabel: 'Calendario',
+            tabBarIcon: ({ color }) => <TabIcon icon="📅" color={color} />,
           }}
         />
       </Tab.Navigator>

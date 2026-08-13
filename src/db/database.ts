@@ -5,7 +5,7 @@ import { addReleaseBypassIds } from '../services/release';
 
 const mockNotesData = rawMockNotesData as { notes: SeedNote[] };
 
-const DATABASE_VERSION = 5;
+const DATABASE_VERSION = 6;
 
 const SCHEMA_SQL = `
 PRAGMA journal_mode = WAL;
@@ -37,8 +37,19 @@ CREATE TABLE IF NOT EXISTS media_attachments (
   position    INTEGER NOT NULL DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS user_events (
+  id            TEXT PRIMARY KEY NOT NULL,
+  title         TEXT NOT NULL,
+  type          TEXT NOT NULL CHECK (type IN ('recordatorio', 'evento', 'cumpleanos')),
+  event_date    TEXT NOT NULL,
+  description   TEXT,
+  repeat_yearly INTEGER NOT NULL DEFAULT 0 CHECK (repeat_yearly IN (0, 1)),
+  created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE INDEX IF NOT EXISTS idx_media_note ON media_attachments(note_id);
 CREATE INDEX IF NOT EXISTS idx_feedback_note ON user_feedback(note_id);
+CREATE INDEX IF NOT EXISTS idx_user_events_date ON user_events(event_date);
 `;
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
@@ -88,6 +99,21 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
       'SELECT id FROM notes WHERE is_read = 0'
     );
     await addReleaseBypassIds(pendingRows.map((row) => row.id));
+  }
+
+  if (currentDbVersion < 6) {
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS user_events (
+        id            TEXT PRIMARY KEY NOT NULL,
+        title         TEXT NOT NULL,
+        type          TEXT NOT NULL CHECK (type IN ('recordatorio', 'evento', 'cumpleanos')),
+        event_date    TEXT NOT NULL,
+        description   TEXT,
+        repeat_yearly INTEGER NOT NULL DEFAULT 0 CHECK (repeat_yearly IN (0, 1)),
+        created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE INDEX IF NOT EXISTS idx_user_events_date ON user_events(event_date);
+    `);
   }
 
   await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);

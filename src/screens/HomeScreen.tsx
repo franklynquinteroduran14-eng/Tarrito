@@ -5,7 +5,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import type { Note } from '../types';
 import { getUnreadCount } from '../db/notes';
 import { getNoteById } from '../db/notes';
-import { getAvailableNotes, getReleaseState, type ReleaseState } from '../services/release';
+import { getAvailableNotes, getReleaseState, getDailyReadState, type ReleaseState, type DailyReadState } from '../services/release';
 import { clearForcedNoteId, getForcedNoteId } from '../services/release';
 import { scheduleDailyNotifications } from '../services/notifications';
 import { getSimulatedEvent, type SpecialEvent } from '../data/specialEvents';
@@ -28,6 +28,7 @@ export default function HomeScreen() {
   const styles = createStyles(colors);
   const [unreadCount, setUnreadCount] = useState(0);
   const [releaseState, setReleaseState] = useState<ReleaseState | null>(null);
+  const [dailyState, setDailyState] = useState<DailyReadState | null>(null);
   const [drawing, setDrawing] = useState(false);
   const [note, setNote] = useState<Note | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
@@ -56,6 +57,7 @@ export default function HomeScreen() {
   const refresh = useCallback(async () => {
     setUnreadCount(await getUnreadCount(db));
     setReleaseState(await getReleaseState(db));
+    setDailyState(await getDailyReadState(db));
   }, [db]);
 
   useFocusEffect(
@@ -86,6 +88,10 @@ export default function HomeScreen() {
     setDrawing(true);
     setHintMessage(null);
     try {
+      if (dailyState?.alreadyReadToday) {
+        showHint('Ya sacaste la nota de hoy 💕 Vuelve mañana a la 1:00 PM para la siguiente.');
+        return;
+      }
       const forcedId = await getForcedNoteId();
       if (forcedId) {
         const forcedNote = await getNoteById(db, forcedId);
@@ -178,11 +184,22 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {releaseState && !hasAvailable && releaseState.nextReleaseAt && (
+        {dailyState && dailyState.alreadyReadToday && dailyState.nextReadAt ? (
           <View style={styles.countdownBox}>
-            <ReleaseCountdown target={releaseState.nextReleaseAt} />
-            <Text style={styles.countdownHint}>Las notas se liberan una por día a la 1:00 PM</Text>
+            <ReleaseCountdown target={dailyState.nextReadAt} />
+            <Text style={styles.countdownHint}>
+              Ya leíste la nota de hoy. La siguiente llega mañana a la 1:00 PM
+            </Text>
           </View>
+        ) : (
+          releaseState && !hasAvailable && releaseState.nextReleaseAt && (
+            <View style={styles.countdownBox}>
+              <ReleaseCountdown target={releaseState.nextReleaseAt} />
+              <Text style={styles.countdownHint}>
+                Las notas se liberan una por día a la 1:00 PM
+              </Text>
+            </View>
+          )
         )}
 
         {hintMessage && (

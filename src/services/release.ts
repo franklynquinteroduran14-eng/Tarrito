@@ -1,7 +1,8 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import Storage from 'expo-sqlite/kv-store';
 import type { Note } from '../types';
-import { getPendingNotes } from '../db/notes';
+import { getLastReadAt, getPendingNotes } from '../db/notes';
+import { parseSqliteUtc } from '../utils/date';
 
 const RELEASE_START_KEY = 'release_start_day';
 const RELEASE_BYPASS_KEY = 'release_bypass_ids';
@@ -12,6 +13,11 @@ export interface ReleaseState {
   pendingCount: number;
   availableCount: number;
   nextReleaseAt: Date | null;
+}
+
+export interface DailyReadState {
+  alreadyReadToday: boolean;
+  nextReadAt: Date | null;
 }
 
 const EMPTY_BYPASS: ReadonlySet<string> = new Set();
@@ -69,14 +75,18 @@ export function isReleased(
   return releaseTimeFor(index, startDay).getTime() <= now.getTime();
 }
 
-export async function getReleaseState(db: SQLiteDatabase): Promise<ReleaseState> {
-  const now = new Date();
-
+export async function getReleaseStartDay(): Promise<string> {
   let startDay = await Storage.getItem(RELEASE_START_KEY);
   if (!startDay) {
-    startDay = dayKey(now);
+    startDay = dayKey(new Date());
     await Storage.setItem(RELEASE_START_KEY, startDay);
   }
+  return startDay;
+}
+
+export async function getReleaseState(db: SQLiteDatabase): Promise<ReleaseState> {
+  const now = new Date();
+  const startDay = await getReleaseStartDay();
 
   const pending = await getPendingNotes(db);
   const bypassed = await getReleaseBypassIds();
@@ -102,13 +112,26 @@ export async function getReleaseState(db: SQLiteDatabase): Promise<ReleaseState>
 
 export async function getAvailableNotes(db: SQLiteDatabase): Promise<Note[]> {
   const now = new Date();
-  let startDay = await Storage.getItem(RELEASE_START_KEY);
-  if (!startDay) {
-    startDay = dayKey(now);
-    await Storage.setItem(RELEASE_START_KEY, startDay);
-  }
+  const startDay = await getReleaseStartDay();
 
   const pending = await getPendingNotes(db);
   const bypassed = await getReleaseBypassIds();
   return pending.filter((note) => isReleased(note, pending, startDay, now, bypassed));
+}
+
+function nextDayAtReleaseHour(now: Date): Date {
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, RELEASE_HOUR, 0, 0, 0);
+}
+
+export async function getDailyReadState(db: SQLiteDatabase): Promise<DailyReadState> {
+  const lastReadAt = await getLastReadAt(db);
+  if (!lastReadAt) {
+    return { alreadyReadToday: false, nextReadAt: null };
+  }
+  const lastReadDate = parseSqliteUtc(lastReadAt);
+  const now = new Date();
+  if (dayKey(lastReadDate) === dayKey(now)) {
+    return { alreadyReadToday: true, nextReadAt: nextDayAtReleaseHour(now) };
+  }
+  return { alreadyReadToday: false, nextReadAt: null };
 }

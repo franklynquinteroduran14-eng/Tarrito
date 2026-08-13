@@ -1,5 +1,17 @@
 export type MediaType = 'image' | 'video_link' | 'short_video';
 
+export type CalendarEventType = 'recordatorio' | 'evento' | 'cumpleanos';
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  type: CalendarEventType;
+  date: string;
+  description: string | null;
+  repeatYearly: boolean;
+  createdAt: string;
+}
+
 export interface Note {
   id: string;
   title: string;

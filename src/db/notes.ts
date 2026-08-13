@@ -15,6 +15,13 @@ export async function getUnreadCount(db: SQLiteDatabase): Promise<number> {
   return row?.count ?? 0;
 }
 
+export async function getLastReadAt(db: SQLiteDatabase): Promise<string | null> {
+  const row = await db.getFirstAsync<{ last_read_at: string | null }>(
+    'SELECT MAX(read_at) AS last_read_at FROM user_feedback'
+  );
+  return row?.last_read_at ?? null;
+}
+
 export async function getPendingNotes(db: SQLiteDatabase): Promise<Note[]> {
   const rows = await db.getAllAsync<Omit<Note, 'is_read'> & { is_read: number }>(
     'SELECT id, title, message, created_at, created_at_date AS createdAtDate, times_opened AS timesOpened, is_read FROM notes WHERE is_read = 0 ORDER BY created_at ASC'
