@@ -3,8 +3,8 @@ import { Pressable, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSQLiteContext } from 'expo-sqlite';
 import PressableScale from '../PressableScale';
-import { getAllNotesForAdmin } from '../../db/notes';
-import { clearForcedNoteId, getForcedNoteId, setForcedNoteId } from '../../services/release';
+import { getAllNotesForAdmin, isNoteDeposited } from '../../db/notes';
+import { forceDepositNote, removeForcedDeposit } from '../../services/mailbox';
 import { formatDateTime } from '../../utils/date';
 import type { AdminNote } from '../../types';
 import { useTheme } from '../../theme/ThemeContext';
@@ -17,13 +17,20 @@ export default function NotesTab() {
   const { colors } = useTheme();
   const styles = createLabStyles(colors);
   const [notes, setNotes] = useState<AdminNote[]>([]);
-  const [forcedId, setForcedId] = useState<string | null>(null);
+  const [depositedIds, setDepositedIds] = useState<Set<string>>(new Set());
   const [preview, setPreview] = useState<AdminNote | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    setNotes(await getAllNotesForAdmin(db));
-    setForcedId(await getForcedNoteId());
+    const allNotes = await getAllNotesForAdmin(db);
+    setNotes(allNotes);
+    const deposited = new Set<string>();
+    for (const note of allNotes) {
+      if (await isNoteDeposited(db, note.id)) {
+        deposited.add(note.id);
+      }
+    }
+    setDepositedIds(deposited);
   }, [db]);
 
   useFocusEffect(
@@ -32,22 +39,26 @@ export default function NotesTab() {
     }, [load])
   );
 
-  const toggleForced = async (id: string) => {
-    if (forcedId === id) {
-      await clearForcedNoteId();
-      setForcedId(null);
-      setMessage('Nota forzada quitada: el tarro vuelve a sacar al azar.');
+  const toggleDeposit = async (id: string) => {
+    if (depositedIds.has(id)) {
+      await removeForcedDeposit(db, id);
+      setDepositedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      setMessage('Depósito quitado: la nota vuelve a esperar su día aleatorio.');
     } else {
-      await setForcedNoteId(id);
-      setForcedId(id);
-      setMessage('Nota forzada ✓ Será la primera en salir al tocar el tarro.');
+      await forceDepositNote(db, id);
+      setDepositedIds((prev) => new Set(prev).add(id));
+      setMessage('Depositada en el buzón ✓ Será la próxima carta al abrir el tarro.');
     }
   };
 
   const readCount = notes.filter((note) => note.is_read).length;
 
   const renderCard = (note: AdminNote) => {
-    const isForced = forcedId === note.id;
+    const isDeposited = depositedIds.has(note.id);
     return (
       <Pressable
         key={note.id}
@@ -93,7 +104,9 @@ export default function NotesTab() {
           </>
         ) : (
           <Text style={styles.noteCardMeta}>
-            En borrador: solo se revelará su contenido y reseña cuando ella la abra.
+            {isDeposited
+              ? '📬 Ya está en el buzón: la leerá en cuanto abra el tarro.'
+              : 'En espera: solo se revelará cuando el buzón la deposite.'}
           </Text>
         )}
         <Text style={styles.noteCardMeta}>
@@ -101,20 +114,24 @@ export default function NotesTab() {
           {note.timesOpened === 1 ? 'apertura' : 'aperturas'}
         </Text>
 
-        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10 }}>
-          <PressableScale
-            style={[styles.forceButton, isForced && styles.forceButtonActive]}
-            onPress={() => toggleForced(note.id)}
-            scaleTo={0.93}
-            accessibilityLabel={
-              isForced ? `Quitar ${note.title} como forzada` : `Forzar ${note.title} como siguiente`
-            }
-          >
-            <Text style={[styles.forceButtonText, isForced && styles.forceButtonTextActive]}>
-              {isForced ? '🎯 Forzada · Quitar' : '🎯 Forzar siguiente'}
-            </Text>
-          </PressableScale>
-        </View>
+        {!note.is_read && (
+          <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10 }}>
+            <PressableScale
+              style={[styles.forceButton, isDeposited && styles.forceButtonActive]}
+              onPress={() => toggleDeposit(note.id)}
+              scaleTo={0.93}
+              accessibilityLabel={
+                isDeposited
+                  ? `Quitar ${note.title} del buzón`
+                  : `Depositar ${note.title} en el buzón`
+              }
+            >
+              <Text style={[styles.forceButtonText, isDeposited && styles.forceButtonTextActive]}>
+                {isDeposited ? '📬 En el buzón · Quitar' : '📬 Depositar en el buzón'}
+              </Text>
+            </PressableScale>
+          </View>
+        )}
       </Pressable>
     );
   };

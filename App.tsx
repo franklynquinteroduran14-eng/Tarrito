@@ -10,9 +10,10 @@ import {
   configureNotificationHandler,
   ensureNotificationChannel,
   requestNotificationPermissions,
+  rescheduleAllEventReminders,
   scheduleDailyNotifications,
-  scheduleTodaySpecialEvent,
 } from './src/services/notifications';
+import { ensureDailyDeposits } from './src/services/mailbox';
 import { loadSoundEffects } from './src/services/sound';
 import AppNavigator from './src/navigation/AppNavigator';
 import AppSplash from './src/components/AppSplash';
@@ -39,9 +40,10 @@ function NotificationManager() {
       await ensureNotificationChannel();
       await loadSoundEffects();
       const granted = await requestNotificationPermissions();
+      await ensureDailyDeposits(db);
       if (granted) {
         await scheduleDailyNotifications(db);
-        await scheduleTodaySpecialEvent();
+        await rescheduleAllEventReminders(db);
       }
     })();
   }, [db]);

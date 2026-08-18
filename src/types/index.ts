@@ -9,6 +9,7 @@ export interface CalendarEvent {
   date: string;
   description: string | null;
   repeatYearly: boolean;
+  remindDays: number[];
   createdAt: string;
 }
 
@@ -57,6 +58,31 @@ export interface MediaAttachment {
   type: MediaType;
   url: string;
   position: number;
+}
+
+export interface MailboxNote extends Note {
+  releaseDate: string;
+  depositedAt: string;
+}
+
+export interface WidgetNextEvent {
+  title: string;
+  dateKey: string;
+  daysUntil: number;
+}
+
+export interface WidgetData {
+  pendingLetters: number;
+  nextEvent: WidgetNextEvent | null;
+}
+
+export interface SeedEvent {
+  id: string;
+  title: string;
+  type: CalendarEventType;
+  monthDay: string;
+  description?: string;
+  remindDays: number[];
 }
 
 export interface SeedNote {

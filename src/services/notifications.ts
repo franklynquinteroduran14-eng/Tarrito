@@ -15,8 +15,10 @@ import {
   type NotificationContentInput,
   type NotificationTriggerInput,
 } from 'expo-notifications/build/Notifications.types';
-import { getUnreadCount } from '../db/notes';
-import { getSimulatedEvent, getTodayEvent } from '../data/specialEvents';
+import type { CalendarEvent } from '../types';
+import { getMailboxPendingCount, getUpcomingLettersCount } from '../db/notes';
+import { getAllEvents, nextOccurrence, getTodayEvents } from '../db/events';
+import { dayKey } from './mailbox';
 
 /*
  * Nota importante: importamos los módulos internos de expo-notifications
@@ -65,6 +67,8 @@ const SLOT_KEYS = {
   evening: 'notif_slot_evening',
   special: 'notif_slot_special',
 } as const;
+
+const EVENT_REMINDER_KEY_PREFIX = 'notif_event_reminder_';
 
 export function configureNotificationHandler() {
   setNotificationHandler({
@@ -188,8 +192,11 @@ function secondsTrigger(seconds: number, channelId: string): NotificationTrigger
 }
 
 export async function scheduleDailyNotifications(db: SQLiteDatabase): Promise<void> {
-  const unreadCount = await getUnreadCount(db);
-  const times = await getScheduleTimes();
+  const [pendingCount, poolCount, times] = await Promise.all([
+    getMailboxPendingCount(db),
+    getUpcomingLettersCount(db),
+    getScheduleTimes(),
+  ]);
 
   await scheduleSlot(
     SLOT_KEYS.morning,
@@ -197,7 +204,7 @@ export async function scheduleDailyNotifications(db: SQLiteDatabase): Promise<vo
     dailyTrigger(times.morning.hour, times.morning.minute, CHANNEL_IDS.daily)
   );
 
-  if (unreadCount > 0) {
+  if (poolCount > 0) {
     await scheduleSlot(
       SLOT_KEYS.release,
       { title: 'Nueva carta en el tarro', body: RELEASE_MESSAGE },
@@ -207,58 +214,90 @@ export async function scheduleDailyNotifications(db: SQLiteDatabase): Promise<vo
     await cancelSlot(SLOT_KEYS.release);
   }
 
-  if (unreadCount === 0) {
+  if (pendingCount === 0) {
     await cancelSlot(SLOT_KEYS.evening);
     return;
   }
 
   const body =
-    unreadCount === 1
-      ? 'Recuerda que tienes una nota por leer :3'
-      : `Recuerda que tienes ${unreadCount} notas por leer, no dejes a Franklyn esperando por tu respuesta :3`;
+    pendingCount === 1
+      ? 'Tienes una carta esperando en el buzón :3'
+      : `Tienes ${pendingCount} cartas esperando en el buzón, no dejes a Franklyn esperando por tu respuesta :3`;
 
   await scheduleSlot(
     SLOT_KEYS.evening,
-    { title: 'Notas del tarro', body },
+    { title: 'Cartas del tarro', body },
     dailyTrigger(times.evening.hour, times.evening.minute, CHANNEL_IDS.daily)
   );
 }
 
-export async function scheduleTodaySpecialEvent(): Promise<void> {
-  const event = getTodayEvent();
-  if (!event) {
+function dateAt(dateKey: string, hour: number, minute: number, dayOffset = 0): Date {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  return new Date(year, month - 1, day + dayOffset, hour, minute, 0, 0);
+}
+
+function reminderBody(event: CalendarEvent, offset: number): string {
+  if (offset === 0) {
+    return `¡Hoy es ${event.title}! ✨`;
+  }
+  return `Solo faltan ${offset} ${offset === 1 ? 'día' : 'días'} para ${event.title} ✨`;
+}
+
+export async function cancelEventReminders(eventId: string): Promise<void> {
+  const key = EVENT_REMINDER_KEY_PREFIX + eventId;
+  const stored = await Storage.getItem(key);
+  if (!stored) {
     return;
   }
+  for (const id of stored.split(',').filter(Boolean)) {
+    await cancelScheduledNotificationAsync(id).catch(() => {});
+  }
+  await Storage.removeItem(key);
+}
 
-  const today = new Date();
-  const dateKey = [
-    today.getFullYear(),
-    String(today.getMonth() + 1).padStart(2, '0'),
-    String(today.getDate()).padStart(2, '0'),
-  ].join('-');
-  const flagKey = `notif_special_sent_${dateKey}`;
-
-  const alreadySent = await Storage.getItem(flagKey);
-  if (alreadySent) {
+/**
+ * Programa las notificaciones de antelación de un evento (0/3/5/7 días antes,
+ * siempre a las 9:00 AM). Para eventos anuales usa la próxima ocurrencia.
+ */
+export async function scheduleEventReminders(
+  db: SQLiteDatabase,
+  event: CalendarEvent
+): Promise<void> {
+  await cancelEventReminders(event.id);
+  if (event.remindDays.length === 0) {
     return;
   }
+  const occurrence = nextOccurrence(event, dayKey(new Date()));
+  if (occurrence === null) {
+    return;
+  }
+  const ids: string[] = [];
+  for (const offset of event.remindDays) {
+    const target = dateAt(occurrence, 9, 0, -offset);
+    if (target.getTime() <= Date.now()) {
+      continue;
+    }
+    const id = await scheduleNotificationAsync({
+      content: {
+        title: event.title,
+        body: reminderBody(event, offset),
+      },
+      trigger: {
+        type: SchedulableTriggerInputTypes.DATE,
+        date: target,
+        channelId: CHANNEL_IDS.events,
+      },
+    });
+    ids.push(id);
+  }
+  await Storage.setItem(EVENT_REMINDER_KEY_PREFIX + event.id, ids.join(','));
+}
 
-  const scheduledAt = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 8, 0, 0);
-  const trigger: NotificationTriggerInput =
-    scheduledAt.getTime() > Date.now()
-      ? {
-          type: SchedulableTriggerInputTypes.DATE,
-          date: scheduledAt,
-          channelId: CHANNEL_IDS.events,
-        }
-      : secondsTrigger(5, CHANNEL_IDS.events);
-
-  await scheduleSlot(
-    SLOT_KEYS.special,
-    { title: event.title, body: event.notificationMessage },
-    trigger
-  );
-  await Storage.setItem(flagKey, '1');
+export async function rescheduleAllEventReminders(db: SQLiteDatabase): Promise<void> {
+  const events = await getAllEvents(db);
+  for (const event of events) {
+    await scheduleEventReminders(db, event);
+  }
 }
 
 export async function forceTestNotification(): Promise<void> {
@@ -271,12 +310,13 @@ export async function forceTestNotification(): Promise<void> {
   });
 }
 
-export async function forceTestEventNotification(): Promise<void> {
-  const event = await getSimulatedEvent();
+export async function forceTestEventNotification(db: SQLiteDatabase): Promise<void> {
+  const todayEvents = await getTodayEvents(db);
+  const event = todayEvents[0] ?? null;
   await scheduleNotificationAsync({
     content: {
       title: event?.title ?? 'Evento especial',
-      body: event?.notificationMessage ?? 'Hoy es un día especial para nosotros ✨',
+      body: event?.description ?? 'Hoy es un día especial para nosotros ✨',
     },
     trigger: secondsTrigger(1, CHANNEL_IDS.events),
   });

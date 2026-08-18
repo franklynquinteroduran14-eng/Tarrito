@@ -1,30 +1,37 @@
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
+import { useSQLiteContext } from 'expo-sqlite';
+import Storage from 'expo-sqlite/kv-store';
 import PressableScale from '../PressableScale';
-import {
-  getSimulatedEventDate,
-  setSimulatedEventDate,
-  specialEvents,
-  type SpecialEvent,
-} from '../../data/specialEvents';
+import { getAllEvents } from '../../db/events';
+import type { CalendarEvent } from '../../types';
 import { useTheme } from '../../theme/ThemeContext';
 import { createLabStyles } from './styles';
 
+const SIMULATED_EVENT_KEY = 'simulated_event_date';
+
 export default function EventsTab() {
+  const db = useSQLiteContext();
   const { colors } = useTheme();
   const styles = createLabStyles(colors);
+  const [yearlyEvents, setYearlyEvents] = useState<CalendarEvent[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [preview, setPreview] = useState<SpecialEvent | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    getSimulatedEventDate().then(setSelectedDate);
-  }, []);
+    Storage.getItem(SIMULATED_EVENT_KEY).then(setSelectedDate);
+    getAllEvents(db).then((events) =>
+      setYearlyEvents(events.filter((event) => event.repeatYearly))
+    );
+  }, [db]);
 
   const apply = async (date: string | null) => {
-    await setSimulatedEventDate(date);
+    if (date === null) {
+      await Storage.removeItem(SIMULATED_EVENT_KEY);
+    } else {
+      await Storage.setItem(SIMULATED_EVENT_KEY, date);
+    }
     setSelectedDate(date);
-    setPreview(date ? (specialEvents.find((event) => event.date === date) ?? null) : null);
     setMessage(
       date === null
         ? 'Fecha real restaurada: el banner volverá a seguir el calendario ✓'
@@ -33,7 +40,7 @@ export default function EventsTab() {
   };
 
   const previewEvent =
-    preview ?? (selectedDate ? (specialEvents.find((event) => event.date === selectedDate) ?? null) : null);
+    yearlyEvents.find((event) => event.date.slice(5) === selectedDate) ?? null;
 
   return (
     <View>
@@ -51,13 +58,14 @@ export default function EventsTab() {
             {selectedDate === null && <Text style={{ color: colors.accent, fontWeight: '800' }}>✓</Text>}
           </View>
         </PressableScale>
-        {specialEvents.map((event) => {
-          const isSelected = selectedDate === event.date;
+        {yearlyEvents.map((event) => {
+          const monthDay = event.date.slice(5);
+          const isSelected = selectedDate === monthDay;
           return (
             <PressableScale
-              key={`${event.date}-${event.title}`}
+              key={event.id}
               style={[styles.card, isSelected && styles.cardSelected]}
-              onPress={() => apply(event.date)}
+              onPress={() => apply(monthDay)}
               scaleTo={0.98}
               accessibilityState={{ selected: isSelected }}
             >
@@ -66,7 +74,7 @@ export default function EventsTab() {
                 <Text style={styles.label} numberOfLines={1}>
                   {event.title}
                 </Text>
-                <Text style={[styles.smallButtonText, { fontSize: 12 }]}>{event.date}</Text>
+                <Text style={[styles.smallButtonText, { fontSize: 12 }]}>{monthDay}</Text>
                 {isSelected && <Text style={{ color: colors.accent, fontWeight: '800' }}>✓</Text>}
               </View>
             </PressableScale>
@@ -81,10 +89,10 @@ export default function EventsTab() {
         {previewEvent ? (
           <>
             <Text style={{ fontSize: 15, fontWeight: '800', color: colors.textPrimary }}>
-              {previewEvent.homeBannerMessage}
+              {previewEvent.description ?? `¡Hoy es ${previewEvent.title}! ✨`}
             </Text>
             <Text style={[styles.hint, { marginTop: 8 }]}>
-              Notificación: {previewEvent.notificationMessage}
+              Estos eventos viven en tu calendario y se pueden editar o eliminar allí.
             </Text>
           </>
         ) : (

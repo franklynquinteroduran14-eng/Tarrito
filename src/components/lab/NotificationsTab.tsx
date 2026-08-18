@@ -72,7 +72,7 @@ export default function NotificationsTab() {
   };
 
   const testEvent = async () => {
-    await forceTestEventNotification();
+    await forceTestEventNotification(db);
     setMessage('Notificación de evento enviada, se muestra al instante ✓');
   };
 

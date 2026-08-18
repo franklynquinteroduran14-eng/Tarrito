@@ -1,32 +1,57 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
+import Storage from 'expo-sqlite/kv-store';
 import type {
   AdminNote,
   HistoryNote,
+  MailboxNote,
   MediaAttachment,
   Note,
   NotesMetrics,
   UserFeedback,
 } from '../types';
 
-export async function getUnreadCount(db: SQLiteDatabase): Promise<number> {
+export async function getMailboxPendingCount(db: SQLiteDatabase): Promise<number> {
   const row = await db.getFirstAsync<{ count: number }>(
-    'SELECT COUNT(*) AS count FROM notes WHERE is_read = 0'
+    `SELECT COUNT(*) AS count
+     FROM notes n
+     JOIN note_releases r ON r.note_id = n.id
+     WHERE n.is_read = 0`
   );
   return row?.count ?? 0;
 }
 
-export async function getLastReadAt(db: SQLiteDatabase): Promise<string | null> {
-  const row = await db.getFirstAsync<{ last_read_at: string | null }>(
-    'SELECT MAX(read_at) AS last_read_at FROM user_feedback'
+export async function getUpcomingLettersCount(db: SQLiteDatabase): Promise<number> {
+  const row = await db.getFirstAsync<{ count: number }>(
+    `SELECT COUNT(*) AS count
+     FROM notes
+     WHERE is_read = 0
+       AND id NOT IN (SELECT note_id FROM note_releases)`
   );
-  return row?.last_read_at ?? null;
+  return row?.count ?? 0;
 }
 
-export async function getPendingNotes(db: SQLiteDatabase): Promise<Note[]> {
-  const rows = await db.getAllAsync<Omit<Note, 'is_read'> & { is_read: number }>(
-    'SELECT id, title, message, created_at, created_at_date AS createdAtDate, times_opened AS timesOpened, is_read FROM notes WHERE is_read = 0 ORDER BY created_at ASC'
+export async function getNextMailboxLetter(db: SQLiteDatabase): Promise<MailboxNote | null> {
+  const row = await db.getFirstAsync<
+    Omit<MailboxNote, 'is_read'> & { is_read: number }
+  >(
+    `SELECT n.id, n.title, n.message, n.created_at, n.created_at_date AS createdAtDate,
+            n.times_opened AS timesOpened, n.is_read,
+            r.release_date AS releaseDate, r.deposited_at AS depositedAt
+     FROM notes n
+     JOIN note_releases r ON r.note_id = n.id
+     WHERE n.is_read = 0
+     ORDER BY r.release_date ASC, r.deposited_at ASC
+     LIMIT 1`
   );
-  return rows.map((row) => ({ ...row, is_read: row.is_read === 1 }));
+  return row ? { ...row, is_read: row.is_read === 1 } : null;
+}
+
+export async function isNoteDeposited(db: SQLiteDatabase, noteId: string): Promise<boolean> {
+  const row = await db.getFirstAsync<{ count: number }>(
+    'SELECT COUNT(*) AS count FROM note_releases WHERE note_id = ?',
+    noteId
+  );
+  return (row?.count ?? 0) > 0;
 }
 
 export async function getNoteById(db: SQLiteDatabase, noteId: string): Promise<Note | null> {
@@ -148,7 +173,7 @@ export async function resetAppState(db: SQLiteDatabase): Promise<void> {
   await db.withExclusiveTransactionAsync(async (txn) => {
     await txn.runAsync('UPDATE notes SET is_read = 0, times_opened = 0');
     await txn.runAsync('DELETE FROM user_feedback');
+    await txn.runAsync('DELETE FROM note_releases');
   });
-  const { clearForcedNoteId } = await import('../services/release');
-  await clearForcedNoteId();
+  await Storage.removeItem('mailbox_last_day');
 }

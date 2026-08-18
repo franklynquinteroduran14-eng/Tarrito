@@ -13,11 +13,6 @@ export function formatDateKey(dateKey: string): string {
   return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-export function parseSqliteUtc(value: string): Date {
-  const normalized = value.replace(' ', 'T');
-  return normalized.endsWith('Z') ? new Date(normalized) : new Date(`${normalized}Z`);
-}
-
 export function formatDate(sqliteDate: string): string {
   const date = new Date(sqliteDate.replace(' ', 'T'));
   if (Number.isNaN(date.getTime())) {

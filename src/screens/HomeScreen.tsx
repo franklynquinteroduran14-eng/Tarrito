@@ -1,40 +1,46 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { useSQLiteContext } from 'expo-sqlite';
-import type { Note } from '../types';
-import { getUnreadCount } from '../db/notes';
-import { getNoteById } from '../db/notes';
-import { getAvailableNotes, getReleaseState, getDailyReadState, type ReleaseState, type DailyReadState } from '../services/release';
-import { clearForcedNoteId, getForcedNoteId } from '../services/release';
+import { useSQLiteContext, type SQLiteDatabase } from 'expo-sqlite';
+import Storage from 'expo-sqlite/kv-store';
+import type { CalendarEvent, Note } from '../types';
+import { getNextMailboxLetter } from '../db/notes';
+import { getTodayEvents, getYearlyEventByMonthDay } from '../db/events';
+import { dayKey, ensureDailyDeposits, getMailboxState, type MailboxState } from '../services/mailbox';
 import { scheduleDailyNotifications } from '../services/notifications';
-import { getSimulatedEvent, type SpecialEvent } from '../data/specialEvents';
 import { playDraw } from '../services/sound';
 import { useTheme } from '../theme/ThemeContext';
 import Jar from '../components/Jar';
 import NoteModal from '../components/NoteModal';
 import ReleaseCountdown from '../components/ReleaseCountdown';
 
-function pickRandom<T>(items: T[]): T | null {
-  if (items.length === 0) {
-    return null;
+function bannerText(event: CalendarEvent): string {
+  if (event.description && event.description.trim().length > 0) {
+    return event.description;
   }
-  return items[Math.floor(Math.random() * items.length)];
+  return `¡Hoy es ${event.title}! ✨`;
+}
+
+async function loadTodayEvent(db: SQLiteDatabase): Promise<CalendarEvent | null> {
+  const simulated = await Storage.getItem('simulated_event_date');
+  if (simulated) {
+    return getYearlyEventByMonthDay(db, simulated);
+  }
+  const todayEvents = await getTodayEvents(db);
+  return todayEvents[0] ?? null;
 }
 
 export default function HomeScreen() {
   const db = useSQLiteContext();
   const { colors } = useTheme();
   const styles = createStyles(colors);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [releaseState, setReleaseState] = useState<ReleaseState | null>(null);
-  const [dailyState, setDailyState] = useState<DailyReadState | null>(null);
+  const [mailboxState, setMailboxState] = useState<MailboxState | null>(null);
   const [drawing, setDrawing] = useState(false);
   const [note, setNote] = useState<Note | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [hintMessage, setHintMessage] = useState<string | null>(null);
   const hintOpacity = useRef(new Animated.Value(0)).current;
-  const [todayEvent, setTodayEvent] = useState<SpecialEvent | null>(null);
+  const [todayEvent, setTodayEvent] = useState<CalendarEvent | null>(null);
   const bannerPulse = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -55,15 +61,14 @@ export default function HomeScreen() {
   }, [todayEvent, bannerPulse]);
 
   const refresh = useCallback(async () => {
-    setUnreadCount(await getUnreadCount(db));
-    setReleaseState(await getReleaseState(db));
-    setDailyState(await getDailyReadState(db));
+    await ensureDailyDeposits(db);
+    setMailboxState(await getMailboxState(db));
+    setTodayEvent(await loadTodayEvent(db));
   }, [db]);
 
   useFocusEffect(
     useCallback(() => {
       refresh();
-      getSimulatedEvent().then(setTodayEvent);
     }, [refresh])
   );
 
@@ -88,29 +93,24 @@ export default function HomeScreen() {
     setDrawing(true);
     setHintMessage(null);
     try {
-      if (dailyState?.alreadyReadToday) {
-        showHint('Ya sacaste la nota de hoy 💕 Vuelve mañana a la 1:00 PM para la siguiente.');
-        return;
-      }
-      const forcedId = await getForcedNoteId();
-      if (forcedId) {
-        const forcedNote = await getNoteById(db, forcedId);
-        if (forcedNote) {
-          await clearForcedNoteId();
+      await ensureDailyDeposits(db);
+      const state = await getMailboxState(db);
+      if (state.pendingCount > 0) {
+        const letter = await getNextMailboxLetter(db);
+        if (letter) {
           playDraw();
-          setNote(forcedNote);
+          setNote(letter);
           setModalVisible(true);
           return;
         }
       }
-      const available = await getAvailableNotes(db);
-      const randomNote = pickRandom(available);
-      if (randomNote) {
-        playDraw();
-        setNote(randomNote);
-        setModalVisible(true);
-      } else if (releaseState && releaseState.pendingCount > 0) {
-        showHint('La siguiente nota se libera hoy a la 1:00 PM. ¡Vuelve luego! 💕');
+      if (state.nextDepositAt) {
+        const arrivesToday = dayKey(state.nextDepositAt) === dayKey(new Date());
+        showHint(
+          arrivesToday
+            ? 'Tu próxima carta llega hoy a la 1:00 PM. ¡Vuelve luego! 💕'
+            : 'Tu próxima carta llega mañana a la 1:00 PM. ¡Vuelve luego! 💕'
+        );
       } else {
         showHint('El tarro está vacío por ahora… ¡pero pronto llegará más!');
       }
@@ -124,15 +124,16 @@ export default function HomeScreen() {
     await scheduleDailyNotifications(db);
   }, [db, refresh]);
 
-  const availableCount = releaseState?.availableCount ?? 0;
-  const pendingCount = releaseState?.pendingCount ?? 0;
-  const hasAvailable = availableCount > 0;
+  const pendingCount = mailboxState?.pendingCount ?? 0;
+  const poolCount = mailboxState?.poolCount ?? 0;
+  const nextDepositAt = mailboxState?.nextDepositAt ?? null;
+  const hasLetters = pendingCount > 0;
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.appName}>Tarrito de Notas</Text>
-        <Text style={styles.subtitle}>Toca el tarro para sacar una sorpresa</Text>
+        <Text style={styles.subtitle}>Toca el tarro para abrir tu carta</Text>
       </View>
 
       {todayEvent && (
@@ -157,49 +158,40 @@ export default function HomeScreen() {
             },
           ]}
         >
-          <Text style={styles.eventBannerText}>{todayEvent.homeBannerMessage}</Text>
+          <Text style={styles.eventBannerText}>{bannerText(todayEvent)}</Text>
         </Animated.View>
       )}
 
       <View style={styles.jarArea}>
-        <Jar onPress={handleDraw} disabled={drawing || !hasAvailable} />
+        <Jar onPress={handleDraw} disabled={drawing || !hasLetters} />
       </View>
 
       <View style={styles.footer}>
-        {releaseState === null ? null : hasAvailable ? (
+        {mailboxState === null ? null : hasLetters ? (
           <View style={styles.counterPill}>
             <Text style={styles.counterText}>
-              {availableCount === 1
-                ? '1 nota lista para abrir'
-                : `${availableCount} notas listas para abrir`}
+              {pendingCount === 1
+                ? '1 carta esperando en el buzón'
+                : `${pendingCount} cartas esperando en el buzón`}
             </Text>
           </View>
         ) : (
           <View style={styles.counterPill}>
             <Text style={styles.counterText}>
-              {pendingCount === 0
+              {poolCount === 0
                 ? 'El tarro espera nuevas notas'
-                : `${pendingCount} ${pendingCount === 1 ? 'nota espera' : 'notas esperan'} dentro`}
+                : 'El buzón recibe una carta nueva cada día a la 1:00 PM'}
             </Text>
           </View>
         )}
 
-        {dailyState && dailyState.alreadyReadToday && dailyState.nextReadAt ? (
+        {!hasLetters && nextDepositAt && (
           <View style={styles.countdownBox}>
-            <ReleaseCountdown target={dailyState.nextReadAt} />
+            <ReleaseCountdown target={nextDepositAt} />
             <Text style={styles.countdownHint}>
-              Ya leíste la nota de hoy. La siguiente llega mañana a la 1:00 PM
+              Las cartas se depositan una por día a la 1:00 PM
             </Text>
           </View>
-        ) : (
-          releaseState && !hasAvailable && releaseState.nextReleaseAt && (
-            <View style={styles.countdownBox}>
-              <ReleaseCountdown target={releaseState.nextReleaseAt} />
-              <Text style={styles.countdownHint}>
-                Las notas se liberan una por día a la 1:00 PM
-              </Text>
-            </View>
-          )
         )}
 
         {hintMessage && (

@@ -17,10 +17,20 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useSQLiteContext } from 'expo-sqlite';
 import type { CalendarEvent, CalendarEventType } from '../types';
 import { deleteEvent, insertEvent, updateEvent } from '../db/events';
+import { cancelEventReminders, scheduleEventReminders } from '../services/notifications';
 import { EVENT_TYPE_IDS, EVENT_TYPE_META } from '../constants/eventTypes';
 import { formatDateKey, toDateKey } from '../utils/date';
 import { useTheme } from '../theme/ThemeContext';
 import PressableScale from './PressableScale';
+
+const REMIND_OPTIONS = [0, 3, 5, 7] as const;
+
+function remindLabel(offset: number): string {
+  if (offset === 0) {
+    return 'Mismo día';
+  }
+  return `${offset} días antes`;
+}
 
 interface EventModalProps {
   visible: boolean;
@@ -51,6 +61,7 @@ export default function EventModal({
   const [date, setDate] = useState<string>(toDateKey(new Date()));
   const [description, setDescription] = useState('');
   const [repeatYearly, setRepeatYearly] = useState(false);
+  const [remindDays, setRemindDays] = useState<number[]>([]);
   const [showPicker, setShowPicker] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -91,12 +102,14 @@ export default function EventModal({
       setDate(editingEvent.date);
       setDescription(editingEvent.description ?? '');
       setRepeatYearly(editingEvent.repeatYearly);
+      setRemindDays([...editingEvent.remindDays]);
     } else {
       setTitle('');
       setType('recordatorio');
       setDate(selectedDate ?? toDateKey(new Date()));
       setDescription('');
       setRepeatYearly(false);
+      setRemindDays([]);
     }
     setSaving(false);
     setError(null);
@@ -108,6 +121,12 @@ export default function EventModal({
     if (next === 'cumpleanos' && !editingEvent) {
       setRepeatYearly(true);
     }
+  };
+
+  const toggleRemind = (offset: number) => {
+    setRemindDays((prev) =>
+      prev.includes(offset) ? prev.filter((item) => item !== offset) : [...prev, offset].sort((a, b) => a - b)
+    );
   };
 
   const onPickerChange = (_: unknown, picked?: Date) => {
@@ -135,11 +154,14 @@ export default function EventModal({
         date,
         description: description.trim().length > 0 ? description.trim() : null,
         repeatYearly,
+        remindDays: [...remindDays],
       };
       if (editingEvent) {
         await updateEvent(db, editingEvent.id, payload);
+        await scheduleEventReminders(db, { ...editingEvent, ...payload });
       } else {
-        await insertEvent(db, payload);
+        const created = await insertEvent(db, payload);
+        await scheduleEventReminders(db, created);
       }
       onChanged();
       onClose();
@@ -160,6 +182,7 @@ export default function EventModal({
         text: 'Eliminar',
         style: 'destructive',
         onPress: async () => {
+          await cancelEventReminders(editingEvent.id);
           await deleteEvent(db, editingEvent.id);
           onChanged();
           onClose();
@@ -291,6 +314,42 @@ export default function EventModal({
                   trackColor={{ false: colors.border, true: colors.accent }}
                   thumbColor="#FFFFFF"
                 />
+              </View>
+
+              <View style={styles.remindSection}>
+                <Text style={styles.remindTitle}>🔔 Notificaciones de antelación</Text>
+                <Text style={styles.remindHint}>
+                  El aviso llegará a las 9:00 AM. Elige cuándo quieres que te avise.
+                </Text>
+                <View style={styles.remindRow}>
+                  {REMIND_OPTIONS.map((offset) => {
+                    const isSelected = remindDays.includes(offset);
+                    return (
+                      <PressableScale
+                        key={offset}
+                        style={[
+                          styles.remindChip,
+                          isSelected && {
+                            borderColor: colors.accent,
+                            backgroundColor: colors.accentSoft,
+                          },
+                        ]}
+                        onPress={() => toggleRemind(offset)}
+                        scaleTo={0.94}
+                        accessibilityState={{ selected: isSelected }}
+                      >
+                        <Text
+                          style={[
+                            styles.remindChipText,
+                            isSelected && { color: colors.accent, fontWeight: '800' },
+                          ]}
+                        >
+                          {remindLabel(offset)}
+                        </Text>
+                      </PressableScale>
+                    );
+                  })}
+                </View>
               </View>
 
               {error && <Text style={styles.errorText}>{error}</Text>}
@@ -465,6 +524,39 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
     switchHint: {
       marginTop: 2,
       fontSize: 12,
+      color: colors.textSecondary,
+    },
+    remindSection: {
+      marginTop: 20,
+    },
+    remindTitle: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: colors.textPrimary,
+    },
+    remindHint: {
+      marginTop: 2,
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
+    remindRow: {
+      marginTop: 10,
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      columnGap: 8,
+      rowGap: 8,
+    },
+    remindChip: {
+      borderRadius: 12,
+      borderWidth: 1.5,
+      borderColor: colors.border,
+      backgroundColor: colors.inputBg,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+    },
+    remindChipText: {
+      fontSize: 12,
+      fontWeight: '600',
       color: colors.textSecondary,
     },
     errorText: {

@@ -1,14 +1,12 @@
-import { useCallback, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { Animated, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSQLiteContext } from 'expo-sqlite';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
-import type { CalendarEvent, Note } from '../types';
+import type { CalendarEvent } from '../types';
 import { getAllEvents } from '../db/events';
-import { getPendingNotes } from '../db/notes';
-import { getReleaseBypassIds, getReleaseStartDay, isReleased } from '../services/release';
 import { EVENT_TYPE_IDS, EVENT_TYPE_META } from '../constants/eventTypes';
-import { formatDateKey, parseSqliteUtc, toDateKey } from '../utils/date';
+import { formatDateKey, toDateKey } from '../utils/date';
 import { useTheme } from '../theme/ThemeContext';
 import PressableScale from '../components/PressableScale';
 import EventModal from '../components/EventModal';
@@ -37,13 +35,14 @@ function monthPrefix(month: VisibleMonth): string {
   return `${month.year}-${String(month.month).padStart(2, '0')}`;
 }
 
-function noteDayKey(note: Note): string {
-  return toDateKey(parseSqliteUtc(note.created_at));
+function monthLabel(month: VisibleMonth): string {
+  const date = new Date(month.year, month.month - 1, 1);
+  return date.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
 }
 
 export default function CalendarScreen() {
   const db = useSQLiteContext();
-  const { colors } = useTheme();
+  const { colors, mode } = useTheme();
   const styles = createStyles(colors);
 
   const todayKey = toDateKey(new Date());
@@ -52,24 +51,20 @@ export default function CalendarScreen() {
     year: new Date().getFullYear(),
     month: new Date().getMonth() + 1,
   });
+  const [monthLabelText, setMonthLabelText] = useState<string>(() =>
+    monthLabel({
+      year: new Date().getFullYear(),
+      month: new Date().getMonth() + 1,
+    })
+  );
+  const monthOpacity = useRef(new Animated.Value(1)).current;
+  const monthTranslate = useRef(new Animated.Value(0)).current;
   const [allEvents, setAllEvents] = useState<CalendarEvent[]>([]);
-  const [pendingNotes, setPendingNotes] = useState<Note[]>([]);
-  const [bypassed, setBypassed] = useState<ReadonlySet<string>>(new Set());
-  const [startDay, setStartDay] = useState('');
   const [eventModalVisible, setEventModalVisible] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
 
   const load = useCallback(async () => {
-    const [events, pending, bypassIds, releaseStart] = await Promise.all([
-      getAllEvents(db),
-      getPendingNotes(db),
-      getReleaseBypassIds(),
-      getReleaseStartDay(),
-    ]);
-    setAllEvents(events);
-    setPendingNotes(pending);
-    setBypassed(bypassIds);
-    setStartDay(releaseStart);
+    setAllEvents(await getAllEvents(db));
   }, [db]);
 
   useFocusEffect(
@@ -91,17 +86,6 @@ export default function CalendarScreen() {
         selectedTextColor?: string;
       }
     > = {};
-    for (const note of pendingNotes) {
-      const key = noteDayKey(note);
-      if (!key.startsWith(monthPrefixKey)) {
-        continue;
-      }
-      const dots = marked[key]?.dots ?? [];
-      if (!dots.some((dot) => dot.key === 'nota')) {
-        dots.push({ key: 'nota', color: colors.accent });
-      }
-      marked[key] = { dots, marked: true };
-    }
     for (const event of allEvents) {
       const key = event.repeatYearly
         ? `${visibleMonth.year}-${event.date.slice(5)}`
@@ -125,7 +109,7 @@ export default function CalendarScreen() {
       };
     }
     return marked;
-  }, [allEvents, pendingNotes, selectedDate, visibleMonth, monthPrefixKey, colors.accent]);
+  }, [allEvents, selectedDate, visibleMonth, monthPrefixKey, colors.accent]);
 
   const selectedEvents = useMemo(
     () =>
@@ -134,19 +118,6 @@ export default function CalendarScreen() {
       ),
     [allEvents, selectedDate]
   );
-
-  const selectedNotes = useMemo(
-    () => pendingNotes.filter((note) => noteDayKey(note) === selectedDate),
-    [pendingNotes, selectedDate]
-  );
-
-  const todayReleased = useMemo(() => {
-    const now = new Date();
-    return selectedNotes.map((note) => ({
-      note,
-      released: isReleased(note, pendingNotes, startDay, now, bypassed),
-    }));
-  }, [selectedNotes, pendingNotes, startDay, bypassed]);
 
   const openCreateModal = () => {
     setEditingEvent(null);
@@ -163,11 +134,34 @@ export default function CalendarScreen() {
     setEditingEvent(null);
   };
 
+  const handleMonthChange = (month: { year: number; month: number }) => {
+    setVisibleMonth({ year: month.year, month: month.month });
+    Animated.parallel([
+      Animated.timing(monthOpacity, { toValue: 0, duration: 130, useNativeDriver: true }),
+      Animated.timing(monthTranslate, { toValue: -10, duration: 130, useNativeDriver: true }),
+    ]).start(() => {
+      setMonthLabelText(monthLabel({ year: month.year, month: month.month }));
+      monthTranslate.setValue(10);
+      Animated.parallel([
+        Animated.timing(monthOpacity, { toValue: 1, duration: 170, useNativeDriver: true }),
+        Animated.timing(monthTranslate, { toValue: 0, duration: 170, useNativeDriver: true }),
+      ]).start();
+    });
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Calendario</Text>
-        <Text style={styles.subtitle}>Notas del tarro y tus fechas especiales</Text>
+        <Text style={styles.subtitle}>Tus fechas especiales</Text>
+        <Animated.View
+          style={[
+            styles.monthBadge,
+            { opacity: monthOpacity, transform: [{ translateY: monthTranslate }] },
+          ]}
+        >
+          <Text style={styles.monthBadgeText}>{monthLabelText}</Text>
+        </Animated.View>
       </View>
 
       <ScrollView
@@ -177,11 +171,13 @@ export default function CalendarScreen() {
       >
         <View style={styles.calendarCard}>
           <Calendar
+            key={mode}
+            current={`${visibleMonth.year}-${String(visibleMonth.month).padStart(2, '0')}-01`}
             firstDay={1}
             enableSwipeMonths
             markedDates={markedDates}
             onDayPress={(day) => setSelectedDate(day.dateString)}
-            onMonthChange={(month) => setVisibleMonth({ year: month.year, month: month.month })}
+            onMonthChange={handleMonthChange}
             theme={{
               backgroundColor: colors.surface,
               calendarBackground: colors.surface,
@@ -200,10 +196,6 @@ export default function CalendarScreen() {
             }}
           />
           <View style={styles.legend}>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: colors.accent }]} />
-              <Text style={styles.legendText}>Nota del tarro</Text>
-            </View>
             {EVENT_TYPE_IDS.map((eventType) => {
               const meta = EVENT_TYPE_META[eventType];
               return (
@@ -224,9 +216,9 @@ export default function CalendarScreen() {
                 {selectedDate === todayKey ? ' · Hoy' : ''}
               </Text>
               <Text style={styles.dayPanelCount}>
-                {todayReleased.length > 0 || selectedEvents.length > 0
-                  ? `${todayReleased.length + selectedEvents.length} ${
-                      todayReleased.length + selectedEvents.length === 1 ? 'elemento' : 'elementos'
+                {selectedEvents.length > 0
+                  ? `${selectedEvents.length} ${
+                      selectedEvents.length === 1 ? 'evento' : 'eventos'
                     }`
                   : 'Sin nada guardado'}
               </Text>
@@ -240,22 +232,6 @@ export default function CalendarScreen() {
               <Text style={styles.addButtonText}>＋ Evento</Text>
             </PressableScale>
           </View>
-
-          {todayReleased.map(({ note, released }) => (
-            <View key={note.id} style={styles.noteRow}>
-              <View style={[styles.noteIcon, { backgroundColor: colors.accentSoft }]}>
-                <Text style={styles.noteIconText}>{released ? '💌' : '🔒'}</Text>
-              </View>
-              <View style={styles.rowBody}>
-                <Text style={styles.noteTitle} numberOfLines={1}>
-                  {note.title}
-                </Text>
-                <Text style={styles.noteMeta}>
-                  {released ? 'Nota del tarro · Disponible hoy' : 'Nota del tarro · Aún en espera'}
-                </Text>
-              </View>
-            </View>
-          ))}
 
           {selectedEvents.map((event) => {
             const meta = EVENT_TYPE_META[event.type];
@@ -291,7 +267,7 @@ export default function CalendarScreen() {
             );
           })}
 
-          {selectedNotes.length === 0 && selectedEvents.length === 0 && (
+          {selectedEvents.length === 0 && (
             <View style={styles.emptyDay}>
               <Text style={styles.emptyDayIcon}>🌙</Text>
               <Text style={styles.emptyDayText}>
@@ -323,6 +299,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       paddingTop: 76,
       paddingHorizontal: 24,
       paddingBottom: 16,
+      alignItems: 'center',
     },
     title: {
       fontSize: 28,
@@ -333,6 +310,19 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       marginTop: 6,
       fontSize: 14,
       color: colors.textSecondary,
+    },
+    monthBadge: {
+      marginTop: 12,
+      borderRadius: 16,
+      backgroundColor: colors.accentSoft,
+      paddingHorizontal: 16,
+      paddingVertical: 6,
+    },
+    monthBadgeText: {
+      fontSize: 14,
+      fontWeight: '800',
+      color: colors.accent,
+      textTransform: 'capitalize',
     },
     scroll: {
       flex: 1,
@@ -424,25 +414,6 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       fontSize: 13,
       fontWeight: '800',
     },
-    noteRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      borderRadius: 16,
-      backgroundColor: colors.accentSoft,
-      paddingHorizontal: 12,
-      paddingVertical: 12,
-      marginBottom: 10,
-    },
-    noteIcon: {
-      width: 40,
-      height: 40,
-      borderRadius: 12,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    noteIconText: {
-      fontSize: 18,
-    },
     eventRow: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -467,16 +438,6 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
     rowBody: {
       flex: 1,
       marginLeft: 12,
-    },
-    noteTitle: {
-      fontSize: 15,
-      fontWeight: '700',
-      color: colors.textPrimary,
-    },
-    noteMeta: {
-      marginTop: 2,
-      fontSize: 12,
-      color: colors.textSecondary,
     },
     eventTitleRow: {
       flexDirection: 'row',
