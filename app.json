@@ -2,16 +2,17 @@
   "expo": {
     "name": "Tarrito de Notas",
     "slug": "ElTarroDeNotas",
-    "version": "1.2.0",
+    "version": "1.2.2",
+    "scheme": "eltarro",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "buildNumber": "3"
+      "buildNumber": "4"
     },
     "android": {
-      "versionCode": 3,
+      "versionCode": 4,
       "adaptiveIcon": {
         "backgroundColor": "#FFF8F0",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -39,7 +40,36 @@
           }
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "JarWidget",
+              "label": "Tarrito",
+              "description": "Tus cartas pendientes del tarro",
+              "minWidth": "130dp",
+              "minHeight": "130dp",
+              "targetCellWidth": 2,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 1800000
+            },
+            {
+              "name": "CalendarWidget",
+              "label": "Calendario",
+              "description": "Tus próximos eventos y cumpleaños",
+              "minWidth": "360dp",
+              "minHeight": "170dp",
+              "targetCellWidth": 5,
+              "targetCellHeight": 3,
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 1800000
+            }
+          ]
+        }
+      ]
     ],
     "extra": {
       "eas": {

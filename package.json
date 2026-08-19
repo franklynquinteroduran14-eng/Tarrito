@@ -1,6 +1,6 @@
 {
   "name": "eltarrodenotas",
-  "version": "1.2.0",
+  "version": "1.2.2",
   "main": "index.ts",
   "dependencies": {
     "@react-native-community/datetimepicker": "8.4.4",
@@ -15,6 +15,7 @@
     "expo-status-bar": "~3.0.8",
     "react": "19.1.0",
     "react-native": "0.81.5",
+    "react-native-android-widget": "^0.22.1",
     "react-native-calendars": "^1.1314.0",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",

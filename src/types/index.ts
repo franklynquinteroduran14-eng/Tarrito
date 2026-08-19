@@ -65,15 +65,29 @@ export interface MailboxNote extends Note {
   depositedAt: string;
 }
 
-export interface WidgetNextEvent {
+export interface WidgetUpcomingEvent {
+  id: string;
   title: string;
+  type: CalendarEventType;
   dateKey: string;
   daysUntil: number;
 }
 
-export interface WidgetData {
+export interface WidgetJarData {
   pendingLetters: number;
-  nextEvent: WidgetNextEvent | null;
+  nextDepositAt: string | null;
+}
+
+export interface WidgetCalendarData {
+  todayDay: number;
+  todayMonth: string;
+  todayWeekday: string;
+  upcoming: WidgetUpcomingEvent[];
+}
+
+export interface WidgetData {
+  jar: WidgetJarData;
+  calendar: WidgetCalendarData;
 }
 
 export interface SeedEvent {

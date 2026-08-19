@@ -1,8 +1,17 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
-import type { CalendarEvent, WidgetData, WidgetNextEvent } from '../types';
+import type { CalendarEvent, WidgetCalendarData, WidgetData, WidgetUpcomingEvent } from '../types';
 import { getMailboxPendingCount } from '../db/notes';
 import { getAllEvents, nextOccurrence } from '../db/events';
-import { dayKey } from './mailbox';
+import { dayKey, getMailboxState } from './mailbox';
+
+const MONTH_LABELS = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+];
+
+const WEEKDAY_LABELS = [
+  'Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado',
+];
 
 function daysBetween(fromKey: string, toKey: string): number {
   const [fy, fm, fd] = fromKey.split('-').map(Number);
@@ -12,38 +21,56 @@ function daysBetween(fromKey: string, toKey: string): number {
   return Math.round((to.getTime() - from.getTime()) / 86_400_000);
 }
 
-function nearestNextEvent(events: CalendarEvent[], fromKey: string): WidgetNextEvent | null {
-  let best: { event: CalendarEvent; occurrence: string } | null = null;
-  for (const event of events) {
-    const occurrence = nextOccurrence(event, fromKey);
-    if (occurrence === null) {
-      continue;
-    }
-    if (best === null || occurrence < best.occurrence) {
-      best = { event, occurrence };
-    }
-  }
-  if (best === null) {
-    return null;
-  }
+function upcomingEvents(
+  events: CalendarEvent[],
+  fromKey: string,
+  limit = 4
+): WidgetUpcomingEvent[] {
+  return events
+    .map((event) => {
+      const occurrence = nextOccurrence(event, fromKey);
+      if (occurrence === null) {
+        return null;
+      }
+      return {
+        id: event.id,
+        title: event.title,
+        type: event.type,
+        dateKey: occurrence,
+        daysUntil: daysBetween(fromKey, occurrence),
+      };
+    })
+    .filter((event): event is WidgetUpcomingEvent => event !== null)
+    .sort((a, b) => a.dateKey.localeCompare(b.dateKey) || a.daysUntil - b.daysUntil)
+    .slice(0, limit);
+}
+
+function todayCalendarData(now: Date, events: CalendarEvent[]): WidgetCalendarData {
   return {
-    title: best.event.title,
-    dateKey: best.occurrence,
-    daysUntil: daysBetween(fromKey, best.occurrence),
+    todayDay: now.getDate(),
+    todayMonth: MONTH_LABELS[now.getMonth()],
+    todayWeekday: WEEKDAY_LABELS[now.getDay()],
+    upcoming: upcomingEvents(events, dayKey(now)),
   };
 }
 
 /**
- * Read-model limpio para futuros widgets de Android (react-native-android-widget).
- * Solo consultas: cartas pendientes del buzón y el próximo evento del calendario.
+ * Read-model limpio para los widgets nativos de Android (react-native-android-widget).
+ * Solo consultas: estado del buzón para el widget del tarro y próximos eventos
+ * para el widget del calendario.
  */
 export async function getWidgetData(db: SQLiteDatabase): Promise<WidgetData> {
-  const [pendingLetters, events] = await Promise.all([
+  const [pendingLetters, events, mailboxState] = await Promise.all([
     getMailboxPendingCount(db),
     getAllEvents(db),
+    getMailboxState(db),
   ]);
+  const now = new Date();
   return {
-    pendingLetters,
-    nextEvent: nearestNextEvent(events, dayKey(new Date())),
+    jar: {
+      pendingLetters,
+      nextDepositAt: mailboxState.nextDepositAt?.toISOString() ?? null,
+    },
+    calendar: todayCalendarData(now, events),
   };
 }

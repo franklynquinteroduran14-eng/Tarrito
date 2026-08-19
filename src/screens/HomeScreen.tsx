@@ -8,6 +8,7 @@ import { getNextMailboxLetter } from '../db/notes';
 import { getTodayEvents, getYearlyEventByMonthDay } from '../db/events';
 import { dayKey, ensureDailyDeposits, getMailboxState, type MailboxState } from '../services/mailbox';
 import { scheduleDailyNotifications } from '../services/notifications';
+import { refreshWidgets } from '../services/widgetBridge';
 import { playDraw } from '../services/sound';
 import { useTheme } from '../theme/ThemeContext';
 import Jar from '../components/Jar';
@@ -64,6 +65,7 @@ export default function HomeScreen() {
     await ensureDailyDeposits(db);
     setMailboxState(await getMailboxState(db));
     setTodayEvent(await loadTodayEvent(db));
+    await refreshWidgets(db);
   }, [db]);
 
   useFocusEffect(

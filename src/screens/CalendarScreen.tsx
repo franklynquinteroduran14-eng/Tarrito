@@ -7,6 +7,7 @@ import type { CalendarEvent } from '../types';
 import { getAllEvents } from '../db/events';
 import { EVENT_TYPE_IDS, EVENT_TYPE_META } from '../constants/eventTypes';
 import { formatDateKey, toDateKey } from '../utils/date';
+import { refreshWidgets } from '../services/widgetBridge';
 import { useTheme } from '../theme/ThemeContext';
 import PressableScale from '../components/PressableScale';
 import EventModal from '../components/EventModal';
@@ -65,6 +66,7 @@ export default function CalendarScreen() {
 
   const load = useCallback(async () => {
     setAllEvents(await getAllEvents(db));
+    await refreshWidgets(db);
   }, [db]);
 
   useFocusEffect(

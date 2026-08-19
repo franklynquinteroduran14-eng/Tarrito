@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Animated, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { requestPinWidget } from 'react-native-android-widget';
 import { APP_NAME, APP_VERSION } from '../constants/version';
 import { getSoundSettings, setSoundEffectsEnabled } from '../services/sound';
 import { useTheme } from '../theme/ThemeContext';
@@ -149,6 +150,36 @@ export default function SettingsModal({ visible, onClose }: SettingsModalProps) 
 
               <View style={styles.divider} />
 
+              <View style={styles.section}>
+                <Text style={styles.sectionLabel}>Widgets</Text>
+                <View style={styles.widgetRow}>
+                  <PressableScale
+                    style={styles.widgetButton}
+                    onPress={() => requestPinWidget({ widgetName: 'JarWidget' })}
+                    scaleTo={0.95}
+                  >
+                    <Text style={styles.widgetIcon}>🏺</Text>
+                    <Text style={styles.widgetTitle}>Widget del tarro</Text>
+                    <Text style={styles.widgetHint}>Tus cartas pendientes</Text>
+                  </PressableScale>
+                  <PressableScale
+                    style={styles.widgetButton}
+                    onPress={() => requestPinWidget({ widgetName: 'CalendarWidget' })}
+                    scaleTo={0.95}
+                  >
+                    <Text style={styles.widgetIcon}>📅</Text>
+                    <Text style={styles.widgetTitle}>Widget del calendario</Text>
+                    <Text style={styles.widgetHint}>Próximas fechas especiales</Text>
+                  </PressableScale>
+                </View>
+                <Text style={styles.sectionHint}>
+                  {Platform.OS === 'android'
+                    ? 'Añade los widgets a tu pantalla de inicio para ver tus cartas y fechas sin abrir la app.'
+                    : 'Los widgets están disponibles en la versión de Android.'}
+                </Text>
+              </View>
+
+              <View style={styles.divider} />
               <Text style={styles.sectionLabel}>Información</Text>
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>{APP_NAME}</Text>
@@ -299,5 +330,35 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
     infoValue: {
       fontSize: 14,
       color: colors.textSecondary,
+    },
+    widgetRow: {
+      flexDirection: 'row',
+      columnGap: 10,
+    },
+    widgetButton: {
+      flex: 1,
+      borderRadius: 16,
+      borderWidth: 1.5,
+      borderColor: colors.border,
+      backgroundColor: colors.inputBg,
+      alignItems: 'center',
+      paddingVertical: 14,
+      paddingHorizontal: 8,
+    },
+    widgetIcon: {
+      fontSize: 24,
+    },
+    widgetTitle: {
+      marginTop: 6,
+      fontSize: 13,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      textAlign: 'center',
+    },
+    widgetHint: {
+      marginTop: 3,
+      fontSize: 11,
+      color: colors.textSecondary,
+      textAlign: 'center',
     },
   });

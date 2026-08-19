@@ -9,6 +9,17 @@ import CalendarScreen from '../screens/CalendarScreen';
 
 const Tab = createBottomTabNavigator();
 
+const linking = {
+  prefixes: ['eltarro://'],
+  config: {
+    screens: {
+      Inicio: 'inicio',
+      Recuerdos: 'recuerdos',
+      Calendario: 'calendario',
+    },
+  },
+};
+
 function TabIcon({ icon, color }: { icon: string; color: string }) {
   return (
     <Text style={{ fontSize: 22, color, opacity: 0.9 }} accessibilityElementsHidden>
@@ -21,7 +32,7 @@ export default function AppNavigator() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   return (
-    <NavigationContainer>
+    <NavigationContainer linking={linking}>
       <Tab.Navigator
         screenOptions={{
           headerShown: false,
